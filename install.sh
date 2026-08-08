@@ -14,7 +14,10 @@
 #   4. Sets up the scratch dir and Android-Emacs-side symlinks.
 #
 # What it does NOT do:
-#   * Install APKs (Termux, Android Emacs) — manual.
+#   * Install APKs — manual. Both Termux and Emacs must come from the
+#     Emacs Android port on SourceForge (files/termux/ and files/), so
+#     they share signing key and thus Android UID. F-Droid Termux won't
+#     work — different signing key means no shared UID.
 #   * Grant Android permissions — manual.
 #   * Launch Emacs for the first-run MELPA bootstrap — user does it.
 
@@ -31,13 +34,13 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 # ── 1. Termux packages ────────────────────────────────────────────────────
 log "Installing Termux packages"
-pkg install -y emacs git perl python wget ghostscript mupdf-tools
+pkg install -y emacs git perl python wget ghostscript mupdf-tools texlive-bin
 
 # ── 2. TeX Live ───────────────────────────────────────────────────────────
 TL_YEAR=2026
 TL_ROOT="${PREFIX_}/share/texlive/${TL_YEAR}"
 
-if [ ! -x "${PREFIX_}/bin/texlive/pdflatex" ] || [ ! -d "${TL_ROOT}" ]; then
+if [ ! -d "${TL_ROOT}" ]; then
     log "Installing TeX Live ${TL_YEAR} scheme-infraonly (this takes a while)"
     # Symlink the install profile into HOME so install-tl can find it by name.
     ln -sfn "${REPO}/termux/texlive-basic.profile" "${HOME_}/.texlive-basic.profile"
