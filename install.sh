@@ -79,6 +79,14 @@ if have tlmgr; then
         palatino mathpazo times bookman ncntrsbk zapfchan helvetic courier \
         newtx newpx kpfonts pxfonts fpl \
         2>&1 | tail -5 || true
+    # tlmgr chains updmap-sys after `install', but a single missing
+    # package in the list (e.g. a bad name) makes the whole run exit
+    # non-zero and skip the map rebuild.  Without the map rebuild
+    # pdftex loads the new fonts' TFMs but can't find their PFBs, so
+    # math extension glyphs (`\pi', `\int', …) render as empty boxes.
+    # Force the rebuild unconditionally.
+    log "Rebuilding font maps (updmap-sys)"
+    updmap-sys 2>&1 | tail -3 || true
 fi
 
 # ── 3. Symlink configs into live locations ────────────────────────────────
