@@ -88,8 +88,10 @@ bash install.sh
 ## After install (manual)
 
 1. **Launch Android Emacs**. First launch bootstraps MELPA + installs
-   `use-package`, `auctex`, `cdlatex`, `yasnippet`, `gnu-elpa-keyring-update`.
-   Takes a few minutes on Wi-Fi. Subsequent launches skip the network.
+   `use-package`, `auctex`, `cdlatex`, `yasnippet`, `ace-window` (+ `avy`
+   as its dependency), `gnu-elpa-keyring-update`. Takes a few minutes on
+   Wi-Fi, and you'll see byte-compile output scroll for each package —
+   that's normal. Subsequent launches skip the network.
 2. Open the test file: `C-x C-f ~/latex-scratch/test.tex RET`.
 3. Point on `$ e^{i\pi} + 1 = 0 $` → `C-c p p`. Expect an inline PNG overlay.
 4. If it hangs on "Connecting to melpa", you're on a very slow connection —

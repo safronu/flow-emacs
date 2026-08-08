@@ -172,3 +172,4 @@ short:
 | Buffer font didn't change after adding `\usepackage{mathpazo}` | `M-x my/latex-font-explain` — check "Resolved" line; if nil, the TTF isn't installed (restart Emacs after `install.sh`) |
 | `pdflatex` fails with `Font OT1/ppl/… pplr7t not loadable` (or ptmr/pbkr/pncr/…) | Missing URW font metric package. Re-run `install.sh`, or `tlmgr install palatino times bookman ncntrsbk helvetic courier mathpazo zapfchan` |
 | Preview fails with `pdf2dsc: command not found` | Termux ghostscript is at exactly 10.05.0 — the one release that dropped `pdf2dsc` (restored in 10.05.1). Upgrade: `pkg upgrade ghostscript` (or `pkg install ghostscript` after `pkg update`). |
+| `M-o` undefined (ace-window not installed yet) | First launch after adding ace-window needs network once; if it was offline, reconnect and restart Emacs (or run `M-x package-install RET ace-window`) |

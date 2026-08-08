@@ -100,6 +100,24 @@
 ;; TEXMFROOT is set in early-init.el; everything else (TEXMFDIST, TEXMFVAR,
 ;; TEXMFSYSVAR) is derived from it by kpathsea via texmf.cnf.
 
+;;; --- ace-window: jump between windows with M-o ----------------------------
+;;
+;; One keypress to move between split windows.  With exactly two windows,
+;; M-o jumps straight to the other one (no prompt).  With three or more,
+;; each window shows a big letter — press it to jump there.
+;; `aw-background nil' is deliberate for e-ink: the default dims the whole
+;; frame during selection, which forces a full-screen repaint (ghosting).
+
+(use-package ace-window
+  :bind ("M-o" . ace-window)
+  :config
+  (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)  ; home row instead of 0-9
+        aw-background nil                       ; no full-frame dim on e-ink
+        aw-scope 'frame)
+  ;; Make the selection letters big enough to spot on a 13" panel.
+  (set-face-attribute 'aw-leading-char-face nil
+                      :height 2.5 :weight 'bold))
+
 ;;; --- AUCTeX ---------------------------------------------------------------
 
 (use-package tex

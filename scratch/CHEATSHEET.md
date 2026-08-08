@@ -7,7 +7,8 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 
 1. Open the **Emacs** app (the native Android port).
 2. `C-x C-f` → open a `.tex` file (try `~/latex-scratch/test.tex`).
-3. First launch installs `auctex cdlatex yasnippet` from MELPA — needs network.
+3. First launch installs `auctex cdlatex yasnippet ace-window` (+ `avy` as
+   ace-window's dep) from MELPA — needs network.
 
 ## Preview (inline PNG overlay)
 
@@ -43,6 +44,24 @@ Buffer text is set to the document's own font (via `latex-font-sync`),
 while macro syntax stays in a monospace face (Droid Sans Mono by default).
 `M-x my/latex-font-explain` shows why the document font is what it is;
 override with `M-x my/latex-font-try-family`.
+
+## Windows (splits + jumping)
+
+Emacs can show several files side by side ("windows"). Basics:
+
+| Keys      | Action                                  |
+| --------- | --------------------------------------- |
+| `C-x 3`   | Split side by side                      |
+| `C-x 2`   | Split top / bottom                      |
+| `C-x 1`   | Keep only the current window            |
+| `C-x 0`   | Close the current window                |
+| `M-o`     | Jump to another window (ace-window)     |
+
+`M-o` behavior: with two windows it jumps straight to the other one.
+With three or more, every window shows a big letter (`a s d f …`) —
+press the letter of the window you want. Press `C-g` to cancel.
+Power move (3+ windows only): after `M-o`, press `?` to list extra
+actions (swap, close, …) — safe to ignore as a beginner.
 
 ## Math snippets (YaSnippet)
 
