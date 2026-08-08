@@ -235,14 +235,44 @@ Preserves the global default face's `:height' — only `:family' is remapped."
       (insert (format "Currently on:  %s\n" (or my/latex-current-family "unchanged")))
       (display-buffer (current-buffer)))))
 
-;;; --- Hook wiring --------------------------------------------------------
+;;; --- Global minor mode --------------------------------------------------
+;;
+;; Auto-apply is OFF by default because Android Emacs's sfnt-android font
+;; backend can hard-crash the app on certain malformed TTFs — and until
+;; every bundled TTF has been validated in-frame, we don't install the
+;; hooks unconditionally.  Enable interactively with
+;; `M-x latex-font-sync-mode' once you've verified individual candidates
+;; with `M-x my/latex-font-try-family'.
 
-;; LaTeX-mode-hook: fires on first open; AUCTeX may not have parsed yet
-;; (first call is often a no-op via the `TeX-active-styles' guard).
-;; TeX-update-style-hook: fires after AUCTeX finishes parsing / on save.
-(add-hook 'LaTeX-mode-hook       #'my/latex-apply-family)
-(with-eval-after-load 'tex
-  (add-hook 'TeX-update-style-hook #'my/latex-apply-family))
+(defun my/latex-font-try-family (family)
+  "Prompt for a FAMILY string and remap this buffer's :family to it.
+Use this to test one candidate at a time on device before flipping
+`latex-font-sync-mode' on globally."
+  (interactive (list (completing-read
+                      "Family: "
+                      (delete-dups
+                       (apply #'append (mapcar #'cdr my/latex-font-candidate-alist))))))
+  (when my/latex-face-remap-cookie
+    (face-remap-remove-relative my/latex-face-remap-cookie))
+  (setq my/latex-face-remap-cookie
+        (face-remap-add-relative 'default :family family)
+        my/latex-current-family family)
+  (message "Applied :family = %s" family))
+
+;;;###autoload
+(define-minor-mode latex-font-sync-mode
+  "Global minor mode: sync each LaTeX buffer's :family to its document font.
+When enabled, `my/latex-apply-family' runs on `LaTeX-mode-hook' and
+`TeX-update-style-hook'.  Disabled by default because a bad TTF can
+crash Android Emacs's font backend on face-remap."
+  :global t
+  :group 'latex-font-sync
+  (if latex-font-sync-mode
+      (progn
+        (add-hook 'LaTeX-mode-hook       #'my/latex-apply-family)
+        (add-hook 'TeX-update-style-hook #'my/latex-apply-family))
+    (remove-hook 'LaTeX-mode-hook       #'my/latex-apply-family)
+    (remove-hook 'TeX-update-style-hook #'my/latex-apply-family)))
 
 (provide 'latex-font-sync)
 ;;; latex-font-sync.el ends here
