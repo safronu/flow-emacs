@@ -167,6 +167,11 @@ environment; otherwise the section."
 ;; PNG.  On the Boox e-ink screen, PNG at scale 1.4 is crisp enough.
 
 (use-package preview
+  ;; `preview' ships inside AUCTeX (loaded above via :ensure auctex).  There
+  ;; is no standalone `preview' package on any archive, so use-package must
+  ;; NOT try to install it — otherwise startup errors out here and every
+  ;; form below (including latex-font-sync) is skipped.
+  :ensure nil
   :after latex
   :config
   (setq preview-image-type 'png
@@ -210,8 +215,9 @@ environment; otherwise the section."
 ;; TTFs are shipped in `android-emacs/fonts/' and symlinked into
 ;; `$HOME/fonts' by install.sh (Android Emacs enumerates that dir on launch).
 
-(add-to-list 'load-path user-emacs-directory)
-(require 'latex-font-sync)
+;; Load by absolute path rather than adding `user-emacs-directory' to
+;; `load-path' (Emacs ≥29 warns against the latter).
+(load (expand-file-name "latex-font-sync" user-emacs-directory) nil 'nomessage)
 
 
 ;;; --- CDLaTeX --------------------------------------------------------------
