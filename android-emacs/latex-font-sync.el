@@ -237,12 +237,12 @@ Preserves the global default face's `:height' — only `:family' is remapped."
 
 ;;; --- Global minor mode --------------------------------------------------
 ;;
-;; Auto-apply is OFF by default because Android Emacs's sfnt-android font
-;; backend can hard-crash the app on certain malformed TTFs — and until
-;; every bundled TTF has been validated in-frame, we don't install the
-;; hooks unconditionally.  Enable interactively with
-;; `M-x latex-font-sync-mode' once you've verified individual candidates
-;; with `M-x my/latex-font-try-family'.
+;; init.el turns this on for every session — see the `latex-font-sync-mode'
+;; call there for rationale.  The bundled TTFs under `android-emacs/fonts/'
+;; have been validated in-frame; if you add a new candidate to
+;; `my/latex-font-candidate-alist' or drop a new TTF into `$HOME/fonts/',
+;; test it first with `M-x my/latex-font-try-family' before shipping —
+;; sfnt-android can hard-crash the app on a malformed TTF.
 
 (defun my/latex-font-try-family (family)
   "Prompt for a FAMILY string and remap this buffer's :family to it.

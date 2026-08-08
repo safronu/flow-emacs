@@ -9,7 +9,7 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 2. `C-x C-f` → open a `.tex` file (try `~/latex-scratch/test.tex`).
 3. First launch installs `auctex cdlatex yasnippet` from MELPA — needs network.
 
-## Preview (inline SVG overlay)
+## Preview (inline PNG overlay)
 
 | Keys        | Action                          |
 | ----------- | ------------------------------- |
@@ -20,6 +20,27 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 
 Point inside `$…$`, `\[…\]`, or an env like `equation` — hit `C-c p p`.
 Move point onto an overlay to reveal the source; leave to re-render.
+
+## Folding + fonts
+
+`TeX-fold-mode` + `reveal-mode` are on by default and the buffer folds
+itself on open. Text-markup macros display as their styled content
+(`\textbf{F}` → **F**, `\emph{x}` → *x*, `\section{Foo}` → Foo); point
+entry auto-reveals the source, exit re-folds. Math (`\pi`, `\int`) is
+NOT folded — preview it instead with `C-c p p`.
+
+| Keys          | Action                                    |
+| ------------- | ----------------------------------------- |
+| `C-c C-o C-b` | Fold whole buffer                         |
+| `C-c C-o C-r` | Fold region                               |
+| `C-c C-o b`   | Unfold whole buffer                       |
+| `C-c C-o C-e` | Fold current environment                  |
+| `C-c C-o C-m` | Fold macro at point                       |
+
+Buffer text is set to the document's own font (via `latex-font-sync`),
+while macro syntax stays in a monospace face (Droid Sans Mono by default).
+`M-x my/latex-font-explain` shows why the document font is what it is;
+override with `M-x my/latex-font-try-family`.
 
 ## Math snippets (YaSnippet)
 

@@ -248,6 +248,148 @@ environment; otherwise the section."
 ;; `load-path' (Emacs ≥29 warns against the latter).
 (load (expand-file-name "latex-font-sync" user-emacs-directory) nil 'nomessage)
 
+;; Enable by default: aside from font matching the document, a side effect
+;; of the buffer-local `:family' remap is that `TeX-fold' display strings
+;; correctly render bold/italic for `\textbf'/`\emph'/etc.  Without the
+;; remap in place, Android Emacs's font backend picks a regular-weight
+;; font for the overlay's display string even when its face carries
+;; `:weight bold'.  All bundled TTFs have been validated in-frame.
+(latex-font-sync-mode 1)
+
+
+;;; --- Code font for LaTeX syntactic markup --------------------------------
+;;
+;; `latex-font-sync' remaps the buffer's default :family to the document's
+;; declared font — so `\textbf{...}' args, folded macro contents, section
+;; titles all render in Pagella / Termes / Latin Modern.  But that also
+;; drags macro NAMES (`\textbf', `\begin', `\ref') into the serif face,
+;; where they get lost among the styled content.
+;;
+;; Remap the syntactic font-latex + font-lock faces (macro names, braces,
+;; comments, env names, math delimiters) to a monospace family so code
+;; stands apart from content at a glance.  Only :family is remapped;
+;; foreground/weight from each face survive.  Content-styling faces
+;; (`font-latex-bold-face', `-italic-face', `-underline-face', sectioning,
+;; sub/super, verbatim, type) are deliberately *not* remapped, so they
+;; keep inheriting the buffer default (i.e. the document font).
+
+(defvar my/latex-code-font-family "Droid Sans Mono"
+  "Monospace family used for LaTeX syntactic markup in `LaTeX-mode' buffers.
+Any TTF present under $HOME/fonts/ works; \"Droid Sans Mono\" ships with
+Android and is always available.")
+
+(defconst my/latex-code-font-faces
+  '(font-latex-sedate-face             ; { } [ ]
+    font-latex-warning-face            ; \begin, \end, keyword commands
+    font-latex-math-face               ; math source highlighting
+    font-latex-string-face             ; env names inside \begin{...}
+    font-latex-script-char-face        ; ^ and _
+    font-latex-doctex-preprocessor-face
+    font-latex-doctex-documentation-face
+    font-lock-keyword-face             ; \command names
+    font-lock-comment-face             ; % comments
+    font-lock-comment-delimiter-face
+    font-lock-function-name-face       ; \label{}, \ref{}, \newcommand{}
+    font-lock-variable-name-face
+    font-lock-constant-face
+    font-lock-builtin-face
+    font-lock-preprocessor-face)
+  "Faces remapped to `my/latex-code-font-family' in LaTeX buffers.
+Deliberately excludes content-styling faces (bold, italic, underline,
+sectioning-*, sub/superscript, verbatim, type) so styled content follows
+the document font selected by `latex-font-sync-mode'.")
+
+(defvar-local my/latex-code-font-cookies nil
+  "Face-remap cookies installed by `my/latex-code-font-apply'.")
+
+(defun my/latex-code-font-apply ()
+  "Remap LaTeX syntactic-markup faces to a monospace family, buffer-locally."
+  (when (and (derived-mode-p 'LaTeX-mode)
+             (display-graphic-p))
+    (mapc #'face-remap-remove-relative my/latex-code-font-cookies)
+    (setq my/latex-code-font-cookies
+          (mapcar (lambda (face)
+                    (face-remap-add-relative
+                     face :family my/latex-code-font-family))
+                  my/latex-code-font-faces))))
+
+(add-hook 'LaTeX-mode-hook #'my/latex-code-font-apply)
+
+
+;;; --- Fold macros to WYSIWYG-ish, auto-reveal on point entry ---------------
+;;
+;; `TeX-fold-mode' hides macro syntax behind an overlay: `\textbf{F}' shows
+;; as bold "F", `\emph{x}' as italic "x", `\section{Foo}' as "Foo".  Combined
+;; with `reveal-mode', the overlay auto-expands when point enters it, so you
+;; edit the raw source, then it re-folds on point exit.  This gives an
+;; approximation of the rendered document appearance for text markup, while
+;; math still uses `C-c p p' (preview-latex) for real rasterised previews.
+
+(add-hook 'LaTeX-mode-hook #'TeX-fold-mode)
+(add-hook 'LaTeX-mode-hook #'reveal-mode)
+
+(with-eval-after-load 'tex-fold
+  ;; Auto-fold newly typed macros as you finish them (no manual C-c C-o C-b).
+  (setq TeX-fold-auto t
+        ;; env + macro only, NOT `math'.  `math' folds `\pi'/`\int'/etc. to
+        ;; Unicode glyphs (π, ∫), but the text fonts font-sync selects
+        ;; (Latin Modern Roman, TeX Gyre Pagella, …) don't contain those
+        ;; glyphs, so Android's font backend renders tofu / random fallback.
+        ;; Math stays as source; preview it inline with `C-c p p'.
+        TeX-fold-type-list '(env macro))
+
+  ;; How fold specs work here: an integer N means "show arg N as the
+  ;; placeholder"; the manual promises the arg text is copied with its
+  ;; font-latex face, so `\textbf{X}' folds to `X' in bold, `\emph{X}'
+  ;; in italic, etc. — the default `TeX-fold-macro-spec-list' already
+  ;; covers textbf/textit/emph/texttt/textsf.  A function spec is called
+  ;; via `(apply SPEC ARGS)' with the collected `{...}' args as
+  ;; positional params, point at ov-start.  `(SPEC . (opt . mand))'
+  ;; extends the fold region to that many args.  See the AUCTeX manual
+  ;; node "Folding" and tex-fold.el:1217-1230.
+
+  ;; \href{url}{text} → show arg 2 (the visible text), fold both args.
+  (push '((2 . (0 . 2)) ("href")) TeX-fold-macro-spec-list)
+
+  ;; \enquote{x} → “x” (curly quotes).
+  (defun my/tex-fold-quoted (&rest a)
+    (when-let* ((s (car a))) (format "\u201C%s\u201D" s)))
+  (push '(my/tex-fold-quoted ("enquote")) TeX-fold-macro-spec-list)
+
+  ;; Missing from defaults; use integer 1 so buffer face is preserved.
+  (push '(1 ("underline" "sout" "st" "url" "path" "text"))
+        TeX-fold-macro-spec-list)
+
+  ;; \verb / \lstinline: inline delimiters, not braces.  Engine passes
+  ;; no args; parse the buffer from point (which is at ov-start) instead.
+  (defun my/tex-fold--delim-verb (regexp)
+    (when (looking-at regexp)
+      (let* ((delim (match-string 1))
+             (start (match-end 0)))
+        (save-excursion
+          (goto-char start)
+          (when (search-forward delim nil t)
+            (propertize (buffer-substring-no-properties start (1- (point)))
+                        'face 'font-latex-verbatim-face))))))
+  (defun my/tex-fold-verb (&rest _)
+    (my/tex-fold--delim-verb "\\\\verb\\*?\\(.\\)"))
+  (defun my/tex-fold-lstinline (&rest _)
+    (my/tex-fold--delim-verb "\\\\lstinline\\(?:\\[[^]]*\\]\\)?\\(.\\)"))
+  (push '(my/tex-fold-verb ("verb" "verb*")) TeX-fold-macro-spec-list)
+  (push '(my/tex-fold-lstinline ("lstinline")) TeX-fold-macro-spec-list))
+
+;; Fold the buffer once on open so existing content isn't a wall of
+;; backslashes.  Deferred a hair so font-lock and AUCTeX styles finish first.
+(add-hook 'LaTeX-mode-hook
+          (lambda ()
+            (run-with-idle-timer 0.1 nil
+                                 (lambda (buf)
+                                   (when (buffer-live-p buf)
+                                     (with-current-buffer buf
+                                       (TeX-fold-buffer))))
+                                 (current-buffer)))
+          'append)
+
 
 ;;; --- CDLaTeX --------------------------------------------------------------
 

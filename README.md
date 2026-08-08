@@ -97,6 +97,16 @@ often ships an older one. `early-init.el` sets `package-check-signature nil`
 so bootstrap can pull `gnu-elpa-keyring-update`, which installs the current
 key so verification can be re-enabled later.
 
+**Macro folding.** `TeX-fold-mode` + `reveal-mode` hides text-markup
+syntax behind overlays — `\textbf{F}` displays as bold "F", `\emph{x}`
+as italic "x", `\section{Foo}` as "Foo". When point enters a fold it
+auto-expands back to the raw source so you can edit it, then re-folds
+on exit. `TeX-fold-type-list` is `(env macro)` — deliberately *without*
+`math`: math folding would substitute Unicode glyphs (π, ∫, …) that
+the document text font doesn't contain, so they'd render as fallback
+tofu. Math stays as source and uses `C-c p p` (preview-latex) for real
+rasterised previews.
+
 **Buffer font follows the document.** `latex-font-sync.el` remaps the
 buffer's `:family` to a TTF matching the document's declared font package
 — `\usepackage{mathpazo}` → TeX Gyre Pagella, `\usepackage{times}` → TeX
@@ -106,7 +116,21 @@ with the default face. Android Emacs's font backend enumerates
 `$HOME/fonts` for `.ttf`/`.ttc` only (no OTF, no fontconfig), so we ship
 TrueType conversions of the TeX Gyre + Latin Modern OTFs under
 `android-emacs/fonts/`; `install.sh` symlinks them into place, and Emacs
-picks them up on next launch.
+picks them up on next launch. `latex-font-sync-mode` is on by default;
+besides matching the document font it also happens to be what makes the
+folded-macro overlays actually render bold/italic (Android's font
+backend doesn't pick a bold variant for overlay display strings unless
+the buffer default has been remapped first).
+
+**Code font for markup.** With the buffer default remapped to a serif
+document font, macro names (`\textbf`, `\begin`) and delimiters get lost
+among styled content. `init.el` installs a second buffer-local remap
+that pins the syntactic font-latex + font-lock faces (macro names,
+braces, comments, env names, math delimiters) to a monospace family —
+Droid Sans Mono by default, override with `my/latex-code-font-family`.
+Content-styling faces (bold/italic/underline/sectioning/verbatim) are
+deliberately left alone, so styled content stays in the doc font while
+code stands apart at a glance.
 
 ## Deploying / reproducing
 

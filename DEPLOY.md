@@ -6,14 +6,23 @@ steps (the `install.sh` script).
 
 ## Prerequisites (manual, one-time per device)
 
-1. **Install Termux** from F-Droid (not Play Store — the Play version is
-   frozen). Version ≥ 0.118.
-2. **Install the native Android Emacs port** — build or download
-   `org.gnu.emacs.apk` from the [Emacs Android port page][port].
-   Recent builds share the same Android UID as Termux, which is what lets
-   the two apps see each other's files. If your build uses a different
-   UID you'll need to grant explicit access or fall back to
-   `/sdcard/Documents` as the shared workspace.
+**Both apps must come from the same source (the Emacs Android port on
+SourceForge).** Shared Android UID requires matching signing
+certificates, and F-Droid's Termux is signed with F-Droid's key, which
+is incompatible with the Emacs port's key. The SourceForge project
+therefore ships its own Termux APK re-signed with the Emacs key.
+
+1. **Install Termux** from the Emacs Android port's `termux/` folder:
+   [android-ports-for-gnu-emacs/files/termux/][port-termux]. Do **not**
+   use F-Droid or Play Store Termux — those won't share UID with the
+   Emacs APK below. If you already have F-Droid Termux installed,
+   uninstall it first (Android refuses to update across signing keys).
+2. **Install the native Android Emacs port** — download
+   `emacs-<version>-android.apk` from the [Emacs Android port
+   page][port]. Because you installed the matching Termux in step 1,
+   the two apps will share Android UID and can read/write each other's
+   private files. Verify after install with `pm list packages -U | grep
+   -E 'termux|emacs'` in Termux — both lines should show the same UID.
 3. **Launch each app once** so Android provisions their private
    filesystems (`/data/data/com.termux/files/…`, `/data/data/org.gnu.emacs/files/…`).
 4. In Termux, allow storage access if you want to browse `/sdcard/`:
@@ -22,6 +31,7 @@ steps (the `install.sh` script).
    wake lock) so long installs don't get killed when the screen sleeps.
 
 [port]: https://sourceforge.net/projects/android-ports-for-gnu-emacs/
+[port-termux]: https://sourceforge.net/projects/android-ports-for-gnu-emacs/files/termux/
 
 ## Automated install
 
@@ -82,12 +92,13 @@ emacs -Q --batch -f batch-byte-compile \
 
 ## What can't be automated
 
-- **Downloading APKs.** F-Droid / SourceForge downloads require the Play/
-  browser UI.
+- **Downloading APKs.** SourceForge downloads require the browser UI.
 - **Granting Android permissions.** Storage, wake-lock, and the initial
   "allow install" dialogs must be tapped by hand.
-- **Sharing the UID.** Whether the Emacs APK you install shares UID with
-  Termux depends on the APK's manifest — you can't change it after install.
+- **Matching signing keys.** Shared UID depends on the Termux and Emacs
+  APKs being signed with the same key — you can't change signatures
+  after install. If they don't match at install time, uninstall and
+  reinstall from the SourceForge project's `termux/` folder.
 - **Wi-Fi.** Both `install-tl` and the first Emacs launch need network;
   offline install is possible but not covered here.
 

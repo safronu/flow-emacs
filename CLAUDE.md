@@ -14,8 +14,15 @@ code alone.
   `/data/data/org.gnu.emacs/files/`, emacs-dir
   `/data/data/org.gnu.emacs/files/.emacs.d/`.
 - **Same UID.** The two apps share Android UID (`u0_a114`) — files under
-  either app's private dir are readable/writable from the other. Confirm
-  before assuming; older Emacs APKs may not share UID.
+  either app's private dir are readable/writable from the other. This
+  only works because **both** apps were installed from the [Emacs
+  Android port on SourceForge][port] (`files/` for Emacs, `files/termux/`
+  for a Termux APK re-signed with the Emacs key). F-Droid's Termux uses
+  a different signing key and Android will refuse to share UID across
+  keys. If you're ever unsure, `pm list packages -U | grep -E
+  'termux|emacs'` — the UIDs must match.
+
+[port]: https://sourceforge.net/projects/android-ports-for-gnu-emacs/
 - **Termux Emacs has no image support** (verify with
   `M-x describe-variable RET image-types RET`). Only the native Emacs port
   can render inline images.
@@ -43,6 +50,31 @@ code alone.
   by `text-scale-mode-amount` so `C-x C-+/-` also resizes previews.
 - Do not restore the built-in `preview-get-dpi` — previews become
   invisible.
+
+## Folding + buffer font
+
+- `TeX-fold-mode` + `reveal-mode' are on in every LaTeX buffer, and the
+  buffer auto-folds on open.  `TeX-fold-type-list` is `(env macro)` —
+  **not** `math`.  Folding math substitutes Unicode glyphs (π, ∫) that
+  the document text font (Latin Modern, Pagella, …) doesn't contain, so
+  they render as tofu on Android.  Math stays as source; `C-c p p`
+  previews it.
+- `latex-font-sync-mode` is ON by default (enabled in `init.el`).  It
+  remaps the buffer's default `:family` to a doc-matching TTF.  A
+  non-obvious side effect: without this remap, Android's sfnt-android
+  font backend doesn't pick a bold variant for TeX-fold overlay display
+  strings, so `\textbf{X}` folds render regular-weight.  Turning font
+  sync off breaks that visual, even though the fold text property still
+  says `:weight bold`.  Don't disable it lightly.
+- A second buffer-local face-remap in `init.el` pins syntactic faces
+  (`font-latex-sedate-face`, `-warning-face`, `-math-face`,
+  `-string-face`, `-script-char-face`, doctex-*, and the standard
+  `font-lock-{keyword,comment,function-name,variable-name,constant,
+  builtin,preprocessor}-face`) to a monospace family so markup stays
+  legible against the serif document font.  Content-styling faces
+  (bold/italic/underline/sectioning/sub-super/verbatim/type) are
+  deliberately *not* remapped.  See `my/latex-code-font-faces` in
+  `init.el`.
 
 ## Package system quirks
 
