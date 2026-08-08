@@ -118,8 +118,11 @@ environment; otherwise the section."
                               (point-max)))))))
           (preview-region beg end))))
      (t (preview-section))))
-  :hook ((LaTeX-mode . prettify-symbols-mode)
-         (LaTeX-mode . visual-line-mode))
+  ;; No prettify-symbols-mode: replacing `\pi' with `π' in-buffer breaks
+  ;; editing (super/subscripts jump above/below the baseline, integral
+  ;; glyphs are hard to point at with a stylus).  Use `C-c p p' to see
+  ;; the rendered form as an overlay when you want it.
+  :hook ((LaTeX-mode . visual-line-mode))
   :bind (:map LaTeX-mode-map
               ("C-S-e"   . latex-math-from-calc)
               ("C-c p p" . my/latex-preview-at-point)
