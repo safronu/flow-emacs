@@ -23,8 +23,18 @@
 ;;   `LaTeX-provided-class-options'    - alist ((cls . opts) ...)
 ;;   `TeX-active-styles'               - loaded styles (`nil' until parsed)
 ;;
-;; Fires on `LaTeX-mode-hook' (first open) and `TeX-update-style-hook'
-;; (re-parse, which runs on save via `TeX-auto-save t' in init.el).
+;; Fires on:
+;;   * `LaTeX-mode-hook'      — first open of a .tex buffer;
+;;   * `TeX-update-style-hook' — after AUCTeX re-parses styles (e.g. after
+;;                              `C-c C-n' / `TeX-normal-mode', or the first
+;;                              time styles finish loading);
+;;   * `after-save-hook'       — installed buffer-locally when the mode is
+;;                              on, so that adding `\usepackage{mathpazo}'
+;;                              and saving the file re-selects the buffer
+;;                              font.  `TeX-update-style-hook' does NOT run
+;;                              on plain save (TeX-auto-write calls
+;;                              `TeX-update-style' without FORCE, which is a
+;;                              no-op once styles have been applied once).
 ;;
 ;; XeLaTeX `\setmainfont' is out of scope in v1.
 
@@ -214,7 +224,8 @@ Preserves the global default face's `:height' — only `:family' is remapped."
   (interactive)
   (unless (derived-mode-p 'LaTeX-mode)
     (user-error "Not in LaTeX-mode"))
-  (let* ((intended (my/latex-detect-intended-family))
+  (let* ((src-buffer-name (buffer-name))
+         (intended (my/latex-detect-intended-family))
          (candidates (and intended (my/latex-font--all-candidates intended)))
          (resolved (and intended (my/latex-resolve-family intended)))
          (path-override (my/latex-font--override-for-file (buffer-file-name)))
@@ -224,7 +235,7 @@ Preserves the global default face's `:height' — only `:family' is remapped."
                                 collect pkg)))
     (with-current-buffer (get-buffer-create "*LaTeX Font Sync*")
       (erase-buffer)
-      (insert (format "Buffer:        %s\n" (buffer-name (other-buffer))))
+      (insert (format "Buffer:        %s\n" src-buffer-name))
       (insert (format "AUCTeX parsed: %s\n"
                       (if (bound-and-true-p TeX-active-styles) "yes" "NO (returning nil)")))
       (insert (format "Path override: %s\n" (or path-override "none")))
@@ -259,20 +270,44 @@ Use this to test one candidate at a time on device before flipping
         my/latex-current-family family)
   (message "Applied :family = %s" family))
 
+(defun my/latex-font-sync--install-save-hook ()
+  "Add `my/latex-apply-family' to buffer-local `after-save-hook'.
+Ensures adding a font package (e.g. `\\usepackage{mathpazo}') and saving
+re-selects the buffer font, since `TeX-update-style-hook' is a no-op on
+save once styles have been applied."
+  (add-hook 'after-save-hook #'my/latex-apply-family nil t))
+
+(defun my/latex-font-sync--uninstall-save-hook ()
+  "Remove `my/latex-apply-family' from buffer-local `after-save-hook'."
+  (remove-hook 'after-save-hook #'my/latex-apply-family t))
+
 ;;;###autoload
 (define-minor-mode latex-font-sync-mode
   "Global minor mode: sync each LaTeX buffer's :family to its document font.
-When enabled, `my/latex-apply-family' runs on `LaTeX-mode-hook' and
-`TeX-update-style-hook'.  Disabled by default because a bad TTF can
-crash Android Emacs's font backend on face-remap."
+When enabled, `my/latex-apply-family' runs on `LaTeX-mode-hook',
+`TeX-update-style-hook', and (buffer-locally in every LaTeX buffer)
+`after-save-hook'.  Enabled by default from init.el; a bad TTF can crash
+Android Emacs's font backend on face-remap, so all bundled candidates
+must be validated in-frame before shipping."
   :global t
   :group 'latex-font-sync
   (if latex-font-sync-mode
       (progn
         (add-hook 'LaTeX-mode-hook       #'my/latex-apply-family)
-        (add-hook 'TeX-update-style-hook #'my/latex-apply-family))
+        (add-hook 'TeX-update-style-hook #'my/latex-apply-family)
+        (add-hook 'LaTeX-mode-hook       #'my/latex-font-sync--install-save-hook)
+        ;; Retro-install the save hook in any already-open LaTeX buffers.
+        (dolist (buf (buffer-list))
+          (with-current-buffer buf
+            (when (derived-mode-p 'LaTeX-mode)
+              (my/latex-font-sync--install-save-hook)))))
     (remove-hook 'LaTeX-mode-hook       #'my/latex-apply-family)
-    (remove-hook 'TeX-update-style-hook #'my/latex-apply-family)))
+    (remove-hook 'TeX-update-style-hook #'my/latex-apply-family)
+    (remove-hook 'LaTeX-mode-hook       #'my/latex-font-sync--install-save-hook)
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+        (when (derived-mode-p 'LaTeX-mode)
+          (my/latex-font-sync--uninstall-save-hook))))))
 
 (provide 'latex-font-sync)
 ;;; latex-font-sync.el ends here

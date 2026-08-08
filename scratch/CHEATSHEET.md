@@ -23,11 +23,13 @@ Move point onto an overlay to reveal the source; leave to re-render.
 
 ## Folding + fonts
 
-`TeX-fold-mode` + `reveal-mode` are on by default and the buffer folds
-itself on open. Text-markup macros display as their styled content
-(`\textbf{F}` → **F**, `\emph{x}` → *x*, `\section{Foo}` → Foo); point
-entry auto-reveals the source, exit re-folds. Math (`\pi`, `\int`) is
-NOT folded — preview it instead with `C-c p p`.
+`TeX-fold-mode` is on by default and the buffer folds itself on open.
+Text-markup macros display as their styled content (`\textbf{F}` →
+**F**, `\emph{x}` → *x*, `\section{Foo}` → Foo); point entry
+auto-reveals the source (via TeX-fold's own `TeX-fold-auto-reveal`, not
+`reveal-mode` — fold overlays hide contents through the `display`
+property, which `reveal-mode` doesn't watch), exit re-folds. Math
+(`\pi`, `\int`) is NOT folded — preview it instead with `C-c p p`.
 
 | Keys          | Action                                    |
 | ------------- | ----------------------------------------- |
@@ -44,17 +46,23 @@ override with `M-x my/latex-font-try-family`.
 
 ## Math snippets (YaSnippet)
 
-Type the key, then **TAB**. Only fire inside math (`$…$`, `\[…\]`, envs).
+`mm` and `dm` expand anywhere in a LaTeX buffer — type the key, then
+**TAB**. `ee`, `sr`, `sb` are *auto-snippets*: they fire the instant
+you finish typing the key inside math (`$…$`, `\[…\]`, envs), no TAB
+needed.
 
-| Key  | Expands to        |
-| ---- | ----------------- |
-| `mm` | `$ | $`           |
-| `dm` | `\[ | \]`         |
-| `sr` | `^{ | }`          |
-| `sb` | `_{ | }`          |
-| `ee` | `e^{ | }`         |
+| Key  | Expands to        | When it fires             |
+| ---- | ----------------- | ------------------------- |
+| `mm` | `$ | $`           | anywhere, on TAB          |
+| `dm` | `\[ | \]`         | anywhere, on TAB          |
+| `sr` | `^{ | }`          | in math only, auto        |
+| `sb` | `_{ | }`          | in math only, auto        |
+| `ee` | `e^{ | }`         | in math only, auto        |
 
-Add snippets under `~/.emacs.d/snippets/latex-mode/`, then `M-x yas-reload-all`.
+Add snippets under `~/.config/emacs/snippets/latex-mode/` (Termux
+Emacs — its `user-emacs-directory` is `~/.config/emacs/`, NOT
+`~/.emacs.d/`) or `/data/data/org.gnu.emacs/files/.emacs.d/snippets/latex-mode/`
+(Android Emacs), then `M-x yas-reload-all`.
 
 ## CDLaTeX (fast math input)
 
@@ -101,11 +109,17 @@ result as LaTeX (fractions, radians).
 
 ## Troubleshooting
 
-- **Snippet doesn't expand:** `M-x yas-reload-all`. Check point is in math.
-- **Preview error "gs not supported":** `pkg install mupdf-tools` (mutool is
-  required because Termux gs 10.07 is newer than dvisvgm accepts).
+- **Snippet doesn't expand:** `M-x yas-reload-all`. `mm`/`dm` work
+  anywhere; `ee`/`sr`/`sb` fire only when point is inside math.
+- **`dvisvgm` rejects gs:** `pkg install mupdf-tools` (mutool is
+  required for `dvisvgm`'s PDF pipeline because Termux gs 10.07 is
+  newer than what dvisvgm accepts). This applies to `dvisvgm` only —
+  the `C-c p p` preview pipeline is `pdflatex → pdf2dsc → gs` and does
+  not touch dvisvgm.
 - **`pdflatex: command not found` from Emacs:** relaunch the app — early-init
   puts Termux + TeX Live on `PATH`.
 - **Missing LaTeX package:** `tlmgr install <pkg>` in Termux.
-- **Overlay is fuzzy:** raise `preview-scale-function` factor in `init.el`
-  (currently `1.4`).
+- **Overlay is fuzzy:** raise the frame default face height in
+  `android-emacs/init.el` (the `set-face-attribute 'default …
+  :height 150` line). Preview DPI is derived from the default face
+  height, so bigger buffer text = higher DPI = crisper overlay.

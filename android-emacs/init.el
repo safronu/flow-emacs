@@ -11,12 +11,12 @@
 ;; those binaries are self-contained enough to run from this app's process.
 ;;
 ;; Bindings:
-;;   C-c C-p C-p   AUCTeX preview at point (inline SVG overlay)
-;;   C-c C-p C-b   AUCTeX preview whole buffer
-;;   C-c C-p C-c   clear previews at point
-;;   C-c p p       my/latex-preview-at-point  (inline overlay via AUCTeX)
-;;   C-c p b       preview-buffer
-;;   C-c p c       preview-clearout-buffer
+;;   C-c C-p C-p     AUCTeX preview at point (inline PNG overlay)
+;;   C-c C-p C-b     AUCTeX preview whole buffer
+;;   C-c C-p C-c C-p AUCTeX preview-clearout-at-point (clear one overlay)
+;;   C-c p p         my/latex-preview-at-point (inline overlay via AUCTeX)
+;;   C-c p b         preview-buffer
+;;   C-c p c         preview-clearout-buffer
 
 ;;; --- Package system -------------------------------------------------------
 
@@ -25,6 +25,14 @@
       '(("gnu"    . "https://elpa.gnu.org/packages/")
         ("nongnu" . "https://elpa.nongnu.org/nongnu/")
         ("melpa"  . "https://melpa.org/packages/")))
+
+;; Divert Customize output to its own file so we don't accumulate
+;; `custom-set-variables' / `custom-set-faces' blocks at the tail of
+;; init.el.  The old inline block silently rewrote
+;; `package-selected-packages' to nil on every startup, which broke
+;; `package-autoremove'.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(load custom-file 'noerror 'nomessage)
 
 ;; NEVER refresh archives at startup.  On a mobile connection this blocks the
 ;; UI for a long time (or forever if the network is asleep).  Bootstrap only:
@@ -45,6 +53,12 @@
 ;; later.  Wrapped in `ignore-errors' so it can't wedge startup.
 (unless (package-installed-p 'gnu-elpa-keyring-update)
   (ignore-errors (package-install 'gnu-elpa-keyring-update)))
+
+;; Once the keyring bootstrap has succeeded, re-enable signature checking
+;; for subsequent `package-install' / `package-refresh-contents' calls.
+;; early-init.el keeps `nil' so first-ever run can still bootstrap.
+(when (package-installed-p 'gnu-elpa-keyring-update)
+  (setq package-check-signature 'allow-unsigned))
 
 ;;; --- Sane defaults for the Boox tablet ------------------------------------
 
@@ -326,10 +340,21 @@ the document font selected by `latex-font-sync-mode'.")
 ;; math still uses `C-c p p' (preview-latex) for real rasterised previews.
 
 (add-hook 'LaTeX-mode-hook #'TeX-fold-mode)
+;; NOTE: `reveal-mode' does NOT auto-reveal TeX-fold overlays — the
+;; overlays hide their contents through the `display' property, but
+;; `reveal-mode' only watches the `invisible' property.  Auto-reveal on
+;; point entry is TeX-fold's own machinery (`TeX-fold-auto-reveal',
+;; default = reveal on char/left/right motion into the fold).  This hook
+;; is kept for the small win it gives around org-mode links and
+;; outline-minor-mode headings that a user might also enable in a LaTeX
+;; buffer; it is unrelated to fold reveal.
 (add-hook 'LaTeX-mode-hook #'reveal-mode)
 
 (with-eval-after-load 'tex-fold
-  ;; Auto-fold newly typed macros as you finish them (no manual C-c C-o C-b).
+  ;; Fold macros inserted via `TeX-insert-macro' (C-c C-m and cdlatex's
+  ;; electric insertion) automatically, so freshly-typed macros collapse
+  ;; without a manual `C-c C-o C-b'.  This does NOT fold as-you-type text;
+  ;; it only fires on the macro-insertion command.
   (setq TeX-fold-auto t
         ;; env + macro only, NOT `math'.  `math' folds `\pi'/`\int'/etc. to
         ;; Unicode glyphs (π, ∫), but the text fonts font-sync selects
@@ -349,34 +374,29 @@ the document font selected by `latex-font-sync-mode'.")
   ;; node "Folding" and tex-fold.el:1217-1230.
 
   ;; \href{url}{text} → show arg 2 (the visible text), fold both args.
+  ;; NOTE: the `(SPEC . SIG)' form requires AUCTeX >= 14.1.1.
   (push '((2 . (0 . 2)) ("href")) TeX-fold-macro-spec-list)
 
-  ;; \enquote{x} → “x” (curly quotes).
+  ;; \enquote{x} → “x” (curly quotes).  A fold function that returns nil
+  ;; makes tex-fold render the literal string "[Error: No content or
+  ;; function found]"; returning the symbol `abort' is the sanctioned way
+  ;; to skip folding this occurrence.
   (defun my/tex-fold-quoted (&rest a)
-    (when-let* ((s (car a))) (format "\u201C%s\u201D" s)))
+    (or (when-let* ((s (car a))) (format "\u201C%s\u201D" s)) 'abort))
   (push '(my/tex-fold-quoted ("enquote")) TeX-fold-macro-spec-list)
 
   ;; Missing from defaults; use integer 1 so buffer face is preserved.
   (push '(1 ("underline" "sout" "st" "url" "path" "text"))
         TeX-fold-macro-spec-list)
 
-  ;; \verb / \lstinline: inline delimiters, not braces.  Engine passes
-  ;; no args; parse the buffer from point (which is at ov-start) instead.
-  (defun my/tex-fold--delim-verb (regexp)
-    (when (looking-at regexp)
-      (let* ((delim (match-string 1))
-             (start (match-end 0)))
-        (save-excursion
-          (goto-char start)
-          (when (search-forward delim nil t)
-            (propertize (buffer-substring-no-properties start (1- (point)))
-                        'face 'font-latex-verbatim-face))))))
-  (defun my/tex-fold-verb (&rest _)
-    (my/tex-fold--delim-verb "\\\\verb\\*?\\(.\\)"))
-  (defun my/tex-fold-lstinline (&rest _)
-    (my/tex-fold--delim-verb "\\\\lstinline\\(?:\\[[^]]*\\]\\)?\\(.\\)"))
-  (push '(my/tex-fold-verb ("verb" "verb*")) TeX-fold-macro-spec-list)
-  (push '(my/tex-fold-lstinline ("lstinline")) TeX-fold-macro-spec-list))
+  ;; \verb / \verb* are folded natively by AUCTeX via `TeX-fold-verbs'
+  ;; (part of the default `TeX-fold-region-functions').  Adding a second
+  ;; overlay through `TeX-fold-macro-spec-list' collides with that one
+  ;; and leaves an overlay that doesn't span the `|…|' body.  For
+  ;; `\lstinline', extend AUCTeX's own verb-macro list so it handles the
+  ;; same way.
+  (when (boundp 'TeX-fold-verb-macros)
+    (add-to-list 'TeX-fold-verb-macros "lstinline")))
 
 ;; Fold the buffer once on open so existing content isn't a wall of
 ;; backslashes.  Deferred a hair so font-lock and AUCTeX styles finish first.
@@ -495,7 +515,7 @@ the document font selected by `latex-font-sync-mode'.")
         (open-line 1)
         (push-mark)
         (insert replacement-table)
-        (align-regexp (region-beginning) (region-end) "\\([:space:]]*\\)& ")
+        (align-regexp (region-beginning) (region-end) "\\([[:space:]]*\\)& ")
         (orgtbl-mode -1)
         (advice-remove 'orgtbl-ctrl-c-ctrl-c #'lazytab-orgtbl-replace)))
 
@@ -533,15 +553,3 @@ the document font selected by `latex-font-sync-mode'.")
 
 (provide 'init)
 ;;; init.el ends here
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages nil))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )

@@ -97,30 +97,35 @@ often ships an older one. `early-init.el` sets `package-check-signature nil`
 so bootstrap can pull `gnu-elpa-keyring-update`, which installs the current
 key so verification can be re-enabled later.
 
-**Macro folding.** `TeX-fold-mode` + `reveal-mode` hides text-markup
-syntax behind overlays — `\textbf{F}` displays as bold "F", `\emph{x}`
-as italic "x", `\section{Foo}` as "Foo". When point enters a fold it
-auto-expands back to the raw source so you can edit it, then re-folds
-on exit. `TeX-fold-type-list` is `(env macro)` — deliberately *without*
-`math`: math folding would substitute Unicode glyphs (π, ∫, …) that
-the document text font doesn't contain, so they'd render as fallback
-tofu. Math stays as source and uses `C-c p p` (preview-latex) for real
-rasterised previews.
+**Macro folding.** `TeX-fold-mode` hides text-markup syntax behind
+overlays — `\textbf{F}` displays as bold "F", `\emph{x}` as italic
+"x", `\section{Foo}` as "Foo". Auto-reveal is TeX-fold's *own*
+machinery (`TeX-fold-auto-reveal`, default = reveal on left/right/char
+movement into the fold); `reveal-mode` doesn't participate because
+fold overlays hide their contents via the `display` property, not the
+`invisible` property that `reveal-mode` watches. `TeX-fold-type-list`
+is `(env macro)` — deliberately *without* `math`: math folding would
+substitute Unicode glyphs (π, ∫, …) that the document text font
+doesn't contain, so they'd render as fallback tofu. Math stays as
+source and uses `C-c p p` (preview-latex) for real rasterised previews.
 
 **Buffer font follows the document.** `latex-font-sync.el` remaps the
 buffer's `:family` to a TTF matching the document's declared font package
 — `\usepackage{mathpazo}` → TeX Gyre Pagella, `\usepackage{times}` → TeX
 Gyre Termes, `\renewcommand{\rmdefault}{ppl}` → Pagella, and so on. Only
 `:family` is remapped; `:height` stays global so previews keep scaling
-with the default face. Android Emacs's font backend enumerates
-`$HOME/fonts` for `.ttf`/`.ttc` only (no OTF, no fontconfig), so we ship
-TrueType conversions of the TeX Gyre + Latin Modern OTFs under
-`android-emacs/fonts/`; `install.sh` symlinks them into place, and Emacs
-picks them up on next launch. `latex-font-sync-mode` is on by default;
-besides matching the document font it also happens to be what makes the
-folded-macro overlays actually render bold/italic (Android's font
-backend doesn't pick a bold variant for overlay display strings unless
-the buffer default has been remapped first).
+with the default face. Re-sync fires on file open, on `C-c C-n`
+(`TeX-normal-mode`, which re-parses the preamble), and on save (after
+the AUCTeX auto-parse write hook already ran). Android Emacs's font
+backend enumerates `$HOME/fonts` for `.ttf`/`.ttc` only (no OTF, no
+fontconfig), so we ship TrueType conversions of the TeX Gyre + Latin
+Modern OTFs under `android-emacs/fonts/`; `install.sh` symlinks them
+into place, and Emacs picks them up on next launch.
+`latex-font-sync-mode` is on by default; besides matching the document
+font it also happens to be what makes the folded-macro overlays
+actually render bold/italic (Android's font backend doesn't pick a
+bold variant for overlay display strings unless the buffer default has
+been remapped first).
 
 **Code font for markup.** With the buffer default remapped to a serif
 document font, macro names (`\textbf`, `\begin`) and delimiters get lost
@@ -166,3 +171,4 @@ short:
 | Signature verify fails | `package-check-signature nil` in `early-init.el` |
 | Buffer font didn't change after adding `\usepackage{mathpazo}` | `M-x my/latex-font-explain` — check "Resolved" line; if nil, the TTF isn't installed (restart Emacs after `install.sh`) |
 | `pdflatex` fails with `Font OT1/ppl/… pplr7t not loadable` (or ptmr/pbkr/pncr/…) | Missing URW font metric package. Re-run `install.sh`, or `tlmgr install palatino times bookman ncntrsbk helvetic courier mathpazo zapfchan` |
+| Preview fails with `pdf2dsc: command not found` | Termux ghostscript is at exactly 10.05.0 — the one release that dropped `pdf2dsc` (restored in 10.05.1). Upgrade: `pkg upgrade ghostscript` (or `pkg install ghostscript` after `pkg update`). |

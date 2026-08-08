@@ -1,7 +1,7 @@
 # -*- mode: snippet -*-
 # name: dm — display math (\[ ... \])
 # key: dm
-# condition: (bound-and-true-p LaTeX-mode)
+# condition: t
 # type: snippet
 # --
 \[

@@ -8,8 +8,12 @@
 #   1. Installs Termux packages (emacs, git, perl, python, ghostscript,
 #      mupdf-tools).
 #   2. Installs TeX Live 2026 scheme-infraonly if not already present,
-#      then adds the packages preview-latex needs (mylatex, preview,
-#      pgf, xkeyval).
+#      then adds the LaTeX kernel + preview-latex runtime + the font
+#      families latex-font-sync knows about (latex-bin, amsmath, amsfonts,
+#      mathtools, standalone, varwidth, cm-super, psnfss, mylatex,
+#      preview, pgf, xkeyval, tex-gyre*, lm*, palatino, mathpazo, times,
+#      bookman, ncntrsbk, zapfchan, helvetic, courier, newtx, newpx,
+#      kpfonts, pxfonts, fpl).
 #   3. Symlinks every config file from this repo to its live location.
 #   4. Sets up the scratch dir and Android-Emacs-side symlinks.
 #
@@ -34,7 +38,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 # ── 1. Termux packages ────────────────────────────────────────────────────
 log "Installing Termux packages"
-pkg install -y emacs git perl python wget ghostscript mupdf-tools texlive-bin
+pkg install -y emacs git perl python wget ghostscript mupdf-tools texlive-bin texlive-installer
 
 # ── 2. TeX Live ───────────────────────────────────────────────────────────
 TL_YEAR=2026
@@ -59,9 +63,21 @@ else
 fi
 
 # Extra TeX packages our config assumes.
+#   latex-bin — LaTeX kernel + pdflatex.fmt (scheme-infraonly ships
+#     neither; without this `pdflatex' has nothing to load).
+#   amsmath / amsfonts / mathtools — standard math extensions; amsfonts
+#     provides `amssymb.sty' referenced by test.tex and the preview preamble.
+#   standalone / varwidth — the previewer's wrapper class in
+#     termux-emacs/init.el (`\documentclass[varwidth]{standalone}');
+#     `standalone' does NOT pull `varwidth', so it must be listed.
+#   cm-super — Type-1 outlines for Computer Modern at T1 encoding; without
+#     it pdflatex falls back to bitmap PK fonts and previews come out fuzzy.
+#   psnfss — provides `mathpazo.sty', `times.sty', `helvet.sty',
+#     `courier.sty' etc. (the .sty wrappers around the URW font metrics).
 #   preview / mylatex / pgf / xkeyval — preview-latex runtime.
-#   tex-gyre / tex-gyre-math / lm — Latin Modern + TeX Gyre outlines used
-#     to derive the bundled TTFs and also referenced from documents.
+#   tex-gyre / tex-gyre-math / lm / lm-math — Latin Modern + TeX Gyre
+#     outlines, used to derive the bundled TTFs and also referenced from
+#     documents.
 #   palatino / mathpazo / times / bookman / ncntrsbk / zapfchan / helvetic
 #     / courier — URW clones of the standard 35 PS fonts. `scheme-infraonly'
 #     ships only `symbol' and `zapfding', so `\usepackage{mathpazo}' etc.
@@ -70,10 +86,11 @@ fi
 #   newtx / newpx / kpfonts / pxfonts / fpl — modern math+text bundles
 #     also recognised by `latex-font-sync.el'.
 if have tlmgr; then
-    log "Ensuring extra TeX packages (preview + font families)"
+    log "Ensuring extra TeX packages (LaTeX kernel + preview + font families)"
     # shellcheck disable=SC1091
     . "${PREFIX_}/etc/profile.d/texlive.sh" 2>/dev/null || true
     tlmgr install \
+        latex-bin amsmath amsfonts mathtools standalone varwidth cm-super psnfss \
         mylatex preview pgf xkeyval \
         tex-gyre tex-gyre-math lm lm-math \
         palatino mathpazo times bookman ncntrsbk zapfchan helvetic courier \

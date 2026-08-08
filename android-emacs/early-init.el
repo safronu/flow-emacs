@@ -4,6 +4,18 @@
 ;; code paths).  `android-use-exec-loader nil' lets self-contained ELF
 ;; binaries under $PREFIX exec each other without going through Android's
 ;; app_process shim.
+;;
+;; This only works because Emacs shares its Android UID with the
+;; SourceForge-signed Termux, which is a targetSdk-28 app — SELinux puts
+;; that app's process in the `untrusted_app_27' domain, which retains the
+;; `execmod'/`execute_no_trans' permissions on files under an app's
+;; private data dir.  A modern (targetSdk >= 29) app process runs in
+;; `untrusted_app_29+' and Android's SELinux policy DENIES exec of those
+;; files there, so the direct-exec shortcut fails with EACCES / "Permission
+;; denied".  If Termux (or Emacs) is ever updated to a newer targetSdk and
+;; subprocess calls start failing with "Permission denied", set this back
+;; to `t' (the default) so Emacs routes exec through the app_process
+;; loader again.
 (let ((dirs '("/data/data/com.termux/files/usr/bin"
               "/data/data/com.termux/files/usr/bin/texlive")))
   (dolist (d dirs) (push d exec-path))

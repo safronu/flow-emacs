@@ -6,20 +6,27 @@
 
 Type \verb|mm| then TAB, or \verb|dm| then TAB, to expand math snippets.
 
-Place point inside a math expression and press \textbf{F5} to preview the
-formula inline as an SVG overlay.  \textbf{F6} previews the whole buffer,
-\textbf{F7} clears all overlays.
+Place point inside a math expression and press \verb|C-c p p| (Android
+Emacs) to preview the formula inline as a PNG overlay.
+\verb|C-c p b| previews the whole buffer, \verb|C-c p c| clears all
+overlays.
 
-Test the golden path — put point in $ e^{i\pi} + 1 = 0 $ and hit F5.
+In Termux Emacs the equivalent keys are \textbf{F5} (preview at point),
+\textbf{F6} (preview whole buffer), and \textbf{F7} (re-open the last
+render in Android's image viewer — this does \emph{not} clear anything;
+Termux Emacs has no in-buffer overlays to clear).
+
+Test the golden path — put point in $ e^{i\pi} + 1 = 0 $ and hit
+\verb|C-c p p| (or F5 in Termux Emacs).
 
 $e^{i*\pi}$
 
-Longer display formula (F5 while inside it):
+Longer display formula (\verb|C-c p p| / F5 while inside it):
 \begin{equation}
   \int _{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}
 \end{equation}
 
-Matrix (put point inside, F5):
+Matrix (put point inside, \verb|C-c p p| / F5):
 \[
   A = \begin{pmatrix} a & b \\ c & d \end{pmatrix},
   \quad \det A = ad - bc

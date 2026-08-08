@@ -1,7 +1,7 @@
 # -*- mode: snippet -*-
 # name: ee — auto: e^{...}
 # key: ee
-# condition: (and (bound-and-true-p LaTeX-mode) (texmathp))
+# condition: (and (texmathp) 'auto)
 # type: snippet
 # --
 e^{$1}$0

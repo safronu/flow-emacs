@@ -53,12 +53,18 @@ code alone.
 
 ## Folding + buffer font
 
-- `TeX-fold-mode` + `reveal-mode' are on in every LaTeX buffer, and the
-  buffer auto-folds on open.  `TeX-fold-type-list` is `(env macro)` —
-  **not** `math`.  Folding math substitutes Unicode glyphs (π, ∫) that
-  the document text font (Latin Modern, Pagella, …) doesn't contain, so
-  they render as tofu on Android.  Math stays as source; `C-c p p`
-  previews it.
+- `TeX-fold-mode` is on in every LaTeX buffer, and the buffer auto-folds
+  on open.  `TeX-fold-type-list` is `(env macro)` — **not** `math`.
+  Folding math substitutes Unicode glyphs (π, ∫) that the document text
+  font (Latin Modern, Pagella, …) doesn't contain, so they render as
+  tofu on Android.  Math stays as source; `C-c p p` previews it.
+  Auto-reveal on point entry is TeX-fold's own machinery
+  (`TeX-fold-auto-reveal`, default = reveal on left/right/char motion
+  into the fold).  `reveal-mode` does NOT participate: fold overlays hide
+  their contents via the `display` property, but `reveal-mode` only
+  watches the `invisible` property.  The `(add-hook 'LaTeX-mode-hook
+  #'reveal-mode)` line is essentially a no-op for folds; keep or delete
+  as you like.
 - `latex-font-sync-mode` is ON by default (enabled in `init.el`).  It
   remaps the buffer's default `:family` to a doc-matching TTF.  A
   non-obvious side effect: without this remap, Android's sfnt-android

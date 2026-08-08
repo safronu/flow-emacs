@@ -29,6 +29,24 @@ therefore ships its own Termux APK re-signed with the Emacs key.
    `termux-setup-storage` and grant the permission dialog.
 5. Give Termux **wake lock** in its notification (long-press → Acquire
    wake lock) so long installs don't get killed when the screen sleeps.
+6. **Disable Android's phantom process killer** *before* running
+   `install.sh` or any long-lived Emacs session. Android 12 and 13
+   silently enforce a global limit of 32 non-app "child" processes per
+   UID; anything beyond it is killed with SIGKILL (signal 9). TeX
+   Live's `install-tl` easily spawns more than 32 helper processes,
+   and Emacs's package-refresh + byte-compile flurry can do the same.
+   The wake lock does **not** protect against this — it only prevents
+   the CPU governor from sleeping. From `adb shell` on a paired
+   computer (this cannot be set from inside the device), run:
+
+   ```
+   adb shell "settings put global settings_enable_monitor_phantom_procs false"
+   ```
+
+   The setting persists across reboots on Android 13. Without it,
+   `install.sh` will occasionally exit mid-way with mysterious
+   `Killed` messages or leave a half-populated `~/.texlive2026/`
+   directory.
 
 [port]: https://sourceforge.net/projects/android-ports-for-gnu-emacs/
 [port-termux]: https://sourceforge.net/projects/android-ports-for-gnu-emacs/files/termux/
@@ -47,11 +65,18 @@ bash install.sh
 `install.sh` is idempotent — safe to re-run. It:
 
 1. Installs Termux packages: `emacs`, `git`, `perl`, `python`, `wget`,
-   `ghostscript`, `mupdf-tools`.
+   `ghostscript`, `mupdf-tools`, `texlive-bin`, `texlive-installer`
+   (the last one ships `/etc/profile.d/texlive.sh`, which puts the
+   right `TEXMFROOT=…/2026` into every login shell).
 2. Downloads and installs **TeX Live 2026 scheme-infraonly** via
    `install-tl -profile termux/texlive-basic.profile` (≈ 300 MB, 10–30 min).
-3. Installs the extra TeX packages preview-latex needs
-   (`mylatex`, `preview`, `pgf`, `xkeyval`).
+3. Installs the extra TeX packages we need: LaTeX kernel + preview-latex
+   runtime + font families (`latex-bin`, `amsmath`, `amsfonts`,
+   `mathtools`, `standalone`, `varwidth`, `cm-super`, `psnfss`,
+   `mylatex`, `preview`, `pgf`, `xkeyval`, `tex-gyre`, `tex-gyre-math`,
+   `lm`, `lm-math`, `palatino`, `mathpazo`, `times`, `bookman`,
+   `ncntrsbk`, `zapfchan`, `helvetic`, `courier`, `newtx`, `newpx`,
+   `kpfonts`, `pxfonts`, `fpl`).
 4. Symlinks every config file from this repo to its live location
    (`~/.bashrc`, `~/.config/emacs/…`, `/data/data/org.gnu.emacs/files/.emacs.d/…`,
    `~/.local/bin/…`).
@@ -80,6 +105,12 @@ command -v pdflatex dvisvgm mutool gs latex-scratch          # all should print 
 kpsewhich -var-value=TEXMFROOT                                # ends in /2026, NOT /2026.0
 kpsewhich pdflatex.fmt                                        # must return a path
 pdflatex -version | head -1                                   # TeX Live 2026/Termux
+test ! -d ~/.emacs.d                                          # MUST NOT exist on the
+                                                              # Termux side: if ~/.emacs.d
+                                                              # is present, Termux Emacs
+                                                              # loads that and silently
+                                                              # ignores ~/.config/emacs
+                                                              # (this repo's live location)
 ```
 
 Byte-compile the Emacs configs (should be silent):

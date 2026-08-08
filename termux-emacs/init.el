@@ -19,10 +19,14 @@
         ("nongnu" . "https://elpa.nongnu.org/nongnu/")
         ("melpa"  . "https://melpa.org/packages/")))
 (setq package-quickstart t)
-(package-initialize)
-(unless package-archive-contents (package-refresh-contents))
 
+;; Emacs >= 27 auto-runs `package-initialize' between early-init.el and
+;; init.el, so calling it again here just triggers a warning.  Do NOT add
+;; an unconditional `package-refresh-contents': on mobile networks it
+;; blocks the UI for a long time (or forever if the network is asleep).
+;; Refresh only when bootstrapping `use-package'.
 (unless (package-installed-p 'use-package)
+  (package-refresh-contents)
   (package-install 'use-package))
 (require 'use-package)
 (setq use-package-always-ensure t)
@@ -350,7 +354,7 @@ Set to nil to skip opening (useful with the HTTP server + browser)."
         (open-line 1)
         (push-mark)
         (insert replacement-table)
-        (align-regexp (region-beginning) (region-end) "\\([:space:]]*\\)& ")
+        (align-regexp (region-beginning) (region-end) "\\([[:space:]]*\\)& ")
         (orgtbl-mode -1)
         (advice-remove 'orgtbl-ctrl-c-ctrl-c #'lazytab-orgtbl-replace)))
 
