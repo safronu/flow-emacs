@@ -145,6 +145,27 @@ environment; otherwise the section."
         font-latex-fontify-script nil
         font-latex-fontify-sectioning 1.0)
 
+  ;; Make `\textbf{...}' / `\textit{...}' render as actual bold / italic
+  ;; on-screen so the buffer looks close to the compiled document.  The
+  ;; defaults tint them olive-green, which on e-ink drowns out the weight
+  ;; and slant change — strip the color so the weight/slant is the only
+  ;; visual cue.  The family cascades from the buffer default (see
+  ;; latex-font-sync), so `\textbf{X}' becomes e.g. `TeX Gyre Pagella
+  ;; Bold' when the document uses mathpazo.
+  (with-eval-after-load 'font-latex
+    (dolist (face '(font-latex-bold-face
+                    font-latex-italic-face
+                    font-latex-math-face
+                    font-latex-sedate-face
+                    font-latex-string-face
+                    font-latex-warning-face
+                    font-latex-verbatim-face))
+      (when (facep face)
+        (set-face-attribute face nil :foreground 'unspecified)))
+    ;; Force the weight/slant explicitly in case some theme cleared them.
+    (set-face-attribute 'font-latex-bold-face   nil :weight 'bold :slant 'normal)
+    (set-face-attribute 'font-latex-italic-face nil :weight 'normal :slant 'italic))
+
   (defun latex-math-from-calc ()
     "Evaluate `calc' on the contents of line at point."
     (interactive)
