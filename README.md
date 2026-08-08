@@ -31,6 +31,9 @@ boox-latex-setup/
 ├── android-emacs/                  Native Android Emacs (org.gnu.emacs)
 │   ├── early-init.el               PATH, TEXMFROOT, package-quickstart
 │   ├── init.el                     AUCTeX + preview-latex + cdlatex + yas
+│   ├── latex-font-sync.el          Buffer :family follows LaTeX font package
+│   ├── latex-font-sync-tests.el    ERT tests for the above
+│   ├── fonts/                      TTF conversions of TeX Gyre + Latin Modern
 │   └── snippets/latex-mode/        mm, dm, sr, sb, ee
 │
 ├── termux-emacs/                   Terminal Emacs (no image support)
@@ -65,7 +68,13 @@ is kept as a keyboard-driven fallback that shells out to an external viewer.
 **Shared UID.** The native Android Emacs and Termux run under the same
 Android UID (`u0_a114`), so files under `/data/data/com.termux/files/…` are
 readable/writable from the Emacs app. That's how the Emacs app runs
-Termux's `pdflatex` binary and reads scratch `.tex` files.
+Termux's `pdflatex` binary and reads scratch `.tex` files. This only
+works when both APKs are signed with the same key — that's why both
+must be installed from the [Emacs Android port's SourceForge
+project][port] (which ships a Termux APK re-signed with the Emacs
+key), *not* F-Droid Termux + SourceForge Emacs.
+
+[port]: https://sourceforge.net/projects/android-ports-for-gnu-emacs/files/termux/
 
 **TeX Live layout.** The Termux `texlive-bin` package hardcodes
 `TEXMFROOT=…/2026.0`, but `install-tl` writes the tree to `…/2026`. A
@@ -88,11 +97,23 @@ often ships an older one. `early-init.el` sets `package-check-signature nil`
 so bootstrap can pull `gnu-elpa-keyring-update`, which installs the current
 key so verification can be re-enabled later.
 
+**Buffer font follows the document.** `latex-font-sync.el` remaps the
+buffer's `:family` to a TTF matching the document's declared font package
+— `\usepackage{mathpazo}` → TeX Gyre Pagella, `\usepackage{times}` → TeX
+Gyre Termes, `\renewcommand{\rmdefault}{ppl}` → Pagella, and so on. Only
+`:family` is remapped; `:height` stays global so previews keep scaling
+with the default face. Android Emacs's font backend enumerates
+`$HOME/fonts` for `.ttf`/`.ttc` only (no OTF, no fontconfig), so we ship
+TrueType conversions of the TeX Gyre + Latin Modern OTFs under
+`android-emacs/fonts/`; `install.sh` symlinks them into place, and Emacs
+picks them up on next launch.
+
 ## Deploying / reproducing
 
 See [`DEPLOY.md`](./DEPLOY.md). The short version:
 
-1. Install Termux and the Android Emacs port (must share UID — see notes).
+1. Install Termux and the Android Emacs port **both from the
+   [SourceForge project][port]** so they share signing key (and thus UID).
 2. Clone this repo to `~/boox-latex-setup/`.
 3. `bash install.sh` — installs packages, symlinks configs, sets up TeX Live.
 4. Do the manual steps listed in `DEPLOY.md` (grant storage, launch Emacs
@@ -119,3 +140,4 @@ short:
 | Overlay disappears / invisible | `preview-get-dpi` override in `android-emacs/init.el` |
 | Startup hangs at "Connecting to melpa" | `package-refresh-contents` is now first-run only |
 | Signature verify fails | `package-check-signature nil` in `early-init.el` |
+| Buffer font didn't change after adding `\usepackage{mathpazo}` | `M-x my/latex-font-explain` — check "Resolved" line; if nil, the TTF isn't installed (restart Emacs after `install.sh`) |

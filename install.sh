@@ -59,11 +59,13 @@ else
 fi
 
 # The extra packages preview-latex + our config assume.
+# tex-gyre / lm give us the Palatino/Times/Bookman/etc. font packages so
+# documents using \usepackage{mathpazo} etc. actually build.
 if have tlmgr; then
-    log "Ensuring extra TeX packages: mylatex preview pgf xkeyval"
+    log "Ensuring extra TeX packages: mylatex preview pgf xkeyval tex-gyre lm"
     # shellcheck disable=SC1091
     . "${PREFIX_}/etc/profile.d/texlive.sh" 2>/dev/null || true
-    tlmgr install mylatex preview pgf xkeyval 2>&1 | tail -5 || true
+    tlmgr install mylatex preview pgf xkeyval tex-gyre lm 2>&1 | tail -5 || true
 fi
 
 # ── 3. Symlink configs into live locations ────────────────────────────────
@@ -97,8 +99,9 @@ done
 
 if [ -d "${ANDROID_EMACS_HOME}" ]; then
     log "Linking Android Emacs config"
-    link "${REPO}/android-emacs/early-init.el" "${ANDROID_EMACS_D}/early-init.el"
-    link "${REPO}/android-emacs/init.el"       "${ANDROID_EMACS_D}/init.el"
+    link "${REPO}/android-emacs/early-init.el"        "${ANDROID_EMACS_D}/early-init.el"
+    link "${REPO}/android-emacs/init.el"              "${ANDROID_EMACS_D}/init.el"
+    link "${REPO}/android-emacs/latex-font-sync.el"   "${ANDROID_EMACS_D}/latex-font-sync.el"
     for s in mm dm sr sb ee; do
         link "${REPO}/android-emacs/snippets/latex-mode/$s" \
              "${ANDROID_EMACS_D}/snippets/latex-mode/$s"
@@ -106,6 +109,15 @@ if [ -d "${ANDROID_EMACS_HOME}" ]; then
     # Convenience symlinks so C-x C-f in the Emacs app reaches Termux files.
     link "${HOME_}"                    "${ANDROID_EMACS_HOME}/termux-home"
     link "${HOME_}/latex-scratch"      "${ANDROID_EMACS_HOME}/latex-scratch"
+
+    # TTF fonts for latex-font-sync. Android Emacs enumerates $HOME/fonts/
+    # for .ttf/.ttc only (no OpenType, no fontconfig) — so we ship
+    # TrueType-converted TeX Gyre + Latin Modern here. Emacs picks these up
+    # only on next launch.
+    mkdir -p "${ANDROID_EMACS_HOME}/fonts"
+    for f in "${REPO}/android-emacs/fonts/"*.ttf; do
+        [ -e "$f" ] && link "$f" "${ANDROID_EMACS_HOME}/fonts/$(basename "$f")"
+    done
 else
     log "Android Emacs not installed (${ANDROID_EMACS_HOME} missing) — skipping"
 fi

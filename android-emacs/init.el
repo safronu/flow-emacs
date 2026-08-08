@@ -200,6 +200,19 @@ environment; otherwise the section."
               (when (derived-mode-p 'LaTeX-mode)
                 (preview-clearout-buffer)))))
 
+;;; --- Sync buffer font to LaTeX document font ------------------------------
+;;
+;; Remap the buffer's default face family to a TTF matching the document's
+;; declared font package (mathpazo → TeX Gyre Pagella, times → TeX Gyre
+;; Termes, etc.).  Only the `:family' is remapped; `:height' stays global
+;; so previews continue to scale with the default face.  See
+;; `latex-font-sync.el' for the detector / resolver / applier details.
+;; TTFs are shipped in `android-emacs/fonts/' and symlinked into
+;; `$HOME/fonts' by install.sh (Android Emacs enumerates that dir on launch).
+
+(add-to-list 'load-path user-emacs-directory)
+(require 'latex-font-sync)
+
 
 ;;; --- CDLaTeX --------------------------------------------------------------
 
