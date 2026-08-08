@@ -138,7 +138,12 @@ environment; otherwise the section."
         TeX-electric-sub-and-superscript t
         LaTeX-electric-left-right-brace t
         ;; Use pdflatex; it's the default LaTeX engine we installed.
-        TeX-engine 'default)
+        TeX-engine 'default
+        ;; Don't raise `^{...}' / lower `_{...}' graphically via display
+        ;; properties — the visual shift makes the caret jump across lines
+        ;; when editing and looks off on e-ink.  Rely on preview overlays.
+        font-latex-fontify-script nil
+        font-latex-fontify-sectioning 1.0)
 
   (defun latex-math-from-calc ()
     "Evaluate `calc' on the contents of line at point."
