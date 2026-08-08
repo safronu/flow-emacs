@@ -1,0 +1,58 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# latex-scratch — open a scratch LaTeX buffer in Emacs, ready for
+# CDLaTeX + YaSnippet + <f5> preview.
+#
+# Usage:
+#   latex-scratch          # opens today's scratch file (~/latex-scratch/YYYYMMDD.tex)
+#   latex-scratch foo.tex  # opens the given file, creating it from template if missing
+#
+# Behaviour:
+#   * ensures the TeX Live binaries are on $PATH
+#   * ensures the preview output dir exists
+#   * templates the file so the cursor lands inside \begin{document} ... \end{document}
+#   * launches emacs in the terminal (this build has no GUI/image support;
+#     preview is on-demand via <f5> -> PNG -> `termux-open`)
+
+set -e
+
+# TeX Live binaries live under $PREFIX/bin/texlive but the wrapper script
+# $PREFIX/etc/profile.d/texlive.sh adds them to PATH.
+if [ -f "$PREFIX/etc/profile.d/texlive.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$PREFIX/etc/profile.d/texlive.sh"
+fi
+
+mkdir -p "$HOME/latex-scratch/preview"
+
+file="${1:-$HOME/latex-scratch/$(date +%Y%m%d).tex}"
+
+case "$file" in
+    /*|./*) : ;;
+    *)      file="$HOME/latex-scratch/$file" ;;
+esac
+
+if [ ! -f "$file" ]; then
+    mkdir -p "$(dirname "$file")"
+    cat >"$file" <<'TEMPLATE'
+\documentclass{article}
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage[T1]{fontenc}
+\begin{document}
+
+% Type formulas here.  <TAB> expands cdlatex shortcuts.
+% <f5>  preview the formula at point (opens PNG in Android viewer)
+% <f6>  preview the whole document body
+% <f7>  reopen the most recent preview
+% ``    -> smart-quotes off; use $...$ for inline math.
+%
+% Try:  $\int_0^1 x^2 \, dx = \frac{1}{3}$  <f5>
+%       fr <TAB>  -> \frac{}{}
+%       bmat <TAB> -> \begin{bmatrix} ... \end{bmatrix}
+
+$\int_0^1 x^2 \, dx = \frac{1}{3}$
+
+\end{document}
+TEMPLATE
+fi
+
+exec emacs -nw "+9" "$file"

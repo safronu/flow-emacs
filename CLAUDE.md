@@ -1,0 +1,93 @@
+# Context primer for Claude Code
+
+Read this before helping the user with anything in this repo. It captures
+non-obvious constraints of the environment that aren't visible from the
+code alone.
+
+## Environment
+
+- **Device:** Onyx Boox Note Max — 13" Android 13 e-ink tablet.
+- **Termux:** package name `com.termux`, standard `$PREFIX =
+  /data/data/com.termux/files/usr`, home
+  `/data/data/com.termux/files/home`.
+- **Native Emacs:** package name `org.gnu.emacs`, HOME
+  `/data/data/org.gnu.emacs/files/`, emacs-dir
+  `/data/data/org.gnu.emacs/files/.emacs.d/`.
+- **Same UID.** The two apps share Android UID (`u0_a114`) — files under
+  either app's private dir are readable/writable from the other. Confirm
+  before assuming; older Emacs APKs may not share UID.
+- **Termux Emacs has no image support** (verify with
+  `M-x describe-variable RET image-types RET`). Only the native Emacs port
+  can render inline images.
+
+## LaTeX toolchain
+
+- TeX Live 2026 installed via `install-tl` (**not** the Termux
+  `texlive-bin` package alone) at `$PREFIX/share/texlive/2026/`.
+- Termux's `pdflatex` binary hardcodes `TEXMFROOT=…/2026.0` — wrong. A
+  login shell fixes this via `/etc/profile.d/texlive.sh`. Emacs doesn't
+  source that; `android-emacs/early-init.el` exports `TEXMFROOT` manually.
+- `dvisvgm`'s PDF mode requires `mutool` because Termux ships
+  Ghostscript 10.07 (dvisvgm supports gs < 10.01 or mutool).
+- **We use PNG for previews, not SVG.** `preview-image-type 'png'` is the
+  only value that pairs with pdflatex+gs out of the box. `'dvisvgm'` is
+  not a valid value — it silently no-ops the postprocessing. Do not try
+  to "fix" this to SVG without also switching `TeX-PDF-mode` to nil.
+
+## Preview sizing
+
+- `preview-get-dpi` is **overridden** in `android-emacs/init.el`. The
+  Android frame reports a bogus physical size (~3 meters wide), which
+  makes the built-in DPI computation return ~9. We derive DPI from
+  `frame-char-height` and the current default-face height, and multiply
+  by `text-scale-mode-amount` so `C-x C-+/-` also resizes previews.
+- Do not restore the built-in `preview-get-dpi` — previews become
+  invisible.
+
+## Package system quirks
+
+- `package-check-signature` is set to `nil` in early-init because GNU
+  ELPA rotates keys and fresh Emacs doesn't ship the current one.
+  `gnu-elpa-keyring-update` is installed on first run to bring in the
+  new key so verification can be re-enabled later.
+- `package-quickstart` must be set in **early-init.el**, not init.el —
+  otherwise it takes effect a launch later than expected.
+- `package-refresh-contents` runs only on first-ever launch (when
+  `use-package` isn't installed). Adding an unconditional refresh will
+  hang startup on mobile networks — don't do it. To update, the user runs
+  `M-x package-refresh-contents` manually.
+
+## Repo conventions
+
+- Every user-visible config file lives inside this repo. The live
+  locations (`~/.bashrc`, `~/.config/emacs/init.el`,
+  `/data/data/org.gnu.emacs/files/.emacs.d/init.el`, `~/.local/bin/…`)
+  are **symlinks** into the repo. Edit files in the repo, not through
+  the symlinks.
+- Byte-compiled `.elc` files are gitignored — they're regenerated from
+  source.
+- No secrets are stored here — this repo can be published.
+
+## Common Claude tasks and how to approach them
+
+- **"Add a snippet."** Drop the file in `android-emacs/snippets/latex-mode/`
+  and symlink to `termux-emacs/snippets/latex-mode/` if it should work in
+  both editors. Then `M-x yas-reload-all` in Emacs.
+- **"Preview isn't working."** Ask which pipeline stage the log stops at:
+  pdflatex, pdf2dsc, ghostscript, or overlay placement. See README's
+  troubleshooting table for known failure modes.
+- **"Deploy to a new device."** Follow `DEPLOY.md` step by step. Don't try
+  to shortcut the manual steps (F-Droid install, permission grants) —
+  they can't be automated.
+- **"Change font size."** Edit the `set-face-attribute 'default … :height`
+  line in `android-emacs/init.el`. Previews will follow automatically.
+
+## Things not to do
+
+- Don't restore `(package-initialize)` in init.el — Emacs ≥27 does it
+  automatically; a duplicate call triggers a warning.
+- Don't add an unconditional `(package-refresh-contents)` at startup.
+- Don't change `preview-image-type` to `'dvisvgm'`.
+- Don't remove the `TEXMFROOT` export from `early-init.el`.
+- Don't move files out of the repo — the live setup is symlinked to
+  paths inside this repo.

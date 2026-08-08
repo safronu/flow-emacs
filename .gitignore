@@ -1,0 +1,16 @@
+*.elc
+*.aux
+*.log
+*.pdf
+*.dvi
+*.fmt
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+_region_*
+prv_test.*
+prv-*.svg
+auto/
+preview/
+.DS_Store

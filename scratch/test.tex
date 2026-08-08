@@ -1,0 +1,24 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\begin{document}
+
+Type \verb|mm| then TAB, or \verb|dm| then TAB, to expand math snippets.
+
+Place point inside a math expression and press \textbf{F5} to preview the
+formula inline as an SVG overlay.  \textbf{F6} previews the whole buffer,
+\textbf{F7} clears all overlays.
+
+Test the golden path — put point in $ e^{i\pi} + 1 = 0 $ and hit F5.
+
+Longer display formula (F5 while inside it):
+\begin{equation}
+  \int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}
+\end{equation}
+
+Matrix (put point inside, F5):
+\[
+  A = \begin{pmatrix} a & b \\ c & d \end{pmatrix},
+  \quad \det A = ad - bc
+\]
+
+\end{document}

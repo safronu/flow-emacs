@@ -1,0 +1,19 @@
+#  ~/.bashrc — Termux interactive shell setup for the LaTeX workflow.
+
+# Put ~/.local/bin (latex-scratch, latex-preview-server) ahead of anything else.
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) : ;;
+    *) PATH="$HOME/.local/bin:$PATH" ;;
+esac
+export PATH
+
+# Bring TeX Live binaries onto $PATH.
+if [ -f "$PREFIX/etc/profile.d/texlive.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$PREFIX/etc/profile.d/texlive.sh"
+fi
+
+# Handy aliases for the workflow.
+alias ls='ls --color=auto'
+alias emacs='emacs -nw'   # this build has no GUI
+alias tex-preview='latex-preview-server'

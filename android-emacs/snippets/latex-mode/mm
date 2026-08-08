@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: mm — inline math ($ ... $)
+# key: mm
+# condition: (bound-and-true-p LaTeX-mode)
+# type: snippet
+# --
+\$$1\$$0

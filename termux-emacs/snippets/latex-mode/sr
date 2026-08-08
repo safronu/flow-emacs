@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: sr — auto: superscript
+# key: sr
+# condition: (and (bound-and-true-p LaTeX-mode) (texmathp))
+# type: snippet
+# --
+^{$1}$0
