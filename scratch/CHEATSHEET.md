@@ -45,23 +45,26 @@ while macro syntax stays in a monospace face (Droid Sans Mono by default).
 `M-x my/latex-font-explain` shows why the document font is what it is;
 override with `M-x my/latex-font-try-family`.
 
-## Windows (splits + jumping)
+## Windows (everything via M-o)
 
-Emacs can show several files side by side ("windows"). Basics:
+`M-o` always shows a big letter (`a s d f …`) on every window and waits
+for one key. Press a window's letter to jump there — or press an action
+key first:
 
-| Keys      | Action                                  |
-| --------- | --------------------------------------- |
-| `C-x 3`   | Split side by side                      |
-| `C-x 2`   | Split top / bottom                      |
-| `C-x 1`   | Keep only the current window            |
-| `C-x 0`   | Close the current window                |
-| `M-o`     | Jump to another window (ace-window)     |
+| After `M-o` | Action                                        |
+| ----------- | --------------------------------------------- |
+| `a s d …`   | Jump to that window                           |
+| `b`         | New window side by side (was `C-x 3`)         |
+| `v`         | New window below (was `C-x 2`)                |
+| `x`         | Close a window (then press its letter)        |
+| `o`         | Keep only the current window (was `C-x 1`)    |
+| `m`         | Swap: press the other window's letter         |
+| `?`         | Show all actions                              |
+| `C-g`       | Cancel                                        |
 
-`M-o` behavior: with two windows it jumps straight to the other one.
-With three or more, every window shows a big letter (`a s d f …`) —
-press the letter of the window you want. Press `C-g` to cancel.
-Power move (3+ windows only): after `M-o`, press `?` to list extra
-actions (swap, close, …) — safe to ignore as a beginner.
+Works from a single window too: `M-o b` splits side-by-side, `M-o v`
+splits top/bottom. The classic `C-x 2/3/0/1` keys still work if you
+ever want them.
 
 ## Math snippets (YaSnippet)
 

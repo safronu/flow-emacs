@@ -58,16 +58,18 @@
     (add-to-list 'exec-path dir)
     (setenv "PATH" (concat dir ":" (getenv "PATH")))))
 
-;;; --- ace-window: jump between windows with M-o ----------------------------
+;;; --- ace-window: manage ALL windows with M-o ------------------------------
 ;;
-;; Same behavior as the Android Emacs config: two windows -> M-o jumps
-;; directly; three or more -> pick by home-row letter.  In this -nw build
-;; M-o arrives as `ESC o', which works over any terminal.
+;; Same behavior as the Android Emacs config: M-o always shows the window
+;; letters (`aw-dispatch-always'); action keys b/v/x/o/m/? split, close,
+;; swap, and help.  In this -nw build M-o arrives as `ESC o', which works
+;; over any terminal.
 
 (use-package ace-window
   :bind ("M-o" . ace-window)
   :config
-  (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)
+  (setq aw-keys '(?a ?s ?d ?f ?g ?h ?k ?l)  ; home row, minus dispatch char j
+        aw-dispatch-always t
         aw-background nil            ; face-remapping the whole frame forces a
                                      ; full terminal redraw — skip it on e-ink
         aw-scope 'frame))

@@ -100,19 +100,24 @@
 ;; TEXMFROOT is set in early-init.el; everything else (TEXMFDIST, TEXMFVAR,
 ;; TEXMFSYSVAR) is derived from it by kpathsea via texmf.cnf.
 
-;;; --- ace-window: jump between windows with M-o ----------------------------
+;;; --- ace-window: manage ALL windows with M-o ------------------------------
 ;;
-;; One keypress to move between split windows.  With exactly two windows,
-;; M-o jumps straight to the other one (no prompt).  With three or more,
-;; each window shows a big letter — press it to jump there.
+;; `aw-dispatch-always t' makes M-o always enter selection mode, even with
+;; one or two windows.  Press a window letter to jump, or an action key
+;; first: b = split side-by-side, v = split top/bottom, x = close a
+;; window, o = keep only one, m = swap, ? = help, C-g = cancel.  So a
+;; single window needs no C-x 2/3/0/1 at all: M-o b splits and M-o x
+;; closes.  `?j' is removed from `aw-keys' because `j' is a dispatch
+;; action (select buffer) — the two sets must not overlap.
 ;; `aw-background nil' is deliberate for e-ink: the default dims the whole
 ;; frame during selection, which forces a full-screen repaint (ghosting).
 
 (use-package ace-window
   :bind ("M-o" . ace-window)
   :config
-  (setq aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)  ; home row instead of 0-9
-        aw-background nil                       ; no full-frame dim on e-ink
+  (setq aw-keys '(?a ?s ?d ?f ?g ?h ?k ?l)  ; home row, minus dispatch char j
+        aw-dispatch-always t               ; letters + actions even with 1-2 windows
+        aw-background nil                  ; no full-frame dim on e-ink
         aw-scope 'frame)
   ;; Make the selection letters big enough to spot on a 13" panel.
   (set-face-attribute 'aw-leading-char-face nil
