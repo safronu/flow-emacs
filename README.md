@@ -141,3 +141,4 @@ short:
 | Startup hangs at "Connecting to melpa" | `package-refresh-contents` is now first-run only |
 | Signature verify fails | `package-check-signature nil` in `early-init.el` |
 | Buffer font didn't change after adding `\usepackage{mathpazo}` | `M-x my/latex-font-explain` — check "Resolved" line; if nil, the TTF isn't installed (restart Emacs after `install.sh`) |
+| `pdflatex` fails with `Font OT1/ppl/… pplr7t not loadable` (or ptmr/pbkr/pncr/…) | Missing URW font metric package. Re-run `install.sh`, or `tlmgr install palatino times bookman ncntrsbk helvetic courier mathpazo zapfchan` |
