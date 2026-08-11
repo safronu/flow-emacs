@@ -110,6 +110,15 @@ code alone.
   `use-package` isn't installed). Adding an unconditional refresh will
   hang startup on mobile networks — don't do it. To update, the user runs
   `M-x package-refresh-contents` manually.
+- `package--quickstart-maybe-refresh` is `:override`-advised (top of
+  `android-emacs/init.el`) to defer to `after-init-hook`. In Emacs 30,
+  every `package-install` calls that function, which in turn calls
+  `(package-initialize 'no-activate)` a second time — during init that
+  triggers a spurious "Unnecessary call to `package-initialize' in
+  init file" warning even though we never call it ourselves. Deferring
+  the refresh moves the second `package-initialize` past
+  `after-init-time` (silencing the check) and coalesces multi-install
+  runs. Do not remove the advice.
 
 ## Repo conventions
 

@@ -26,6 +26,30 @@
         ("nongnu" . "https://elpa.nongnu.org/nongnu/")
         ("melpa"  . "https://melpa.org/packages/")))
 
+;; Emacs 30's `package--quickstart-maybe-refresh' (invoked at the end
+;; of every `package-install') calls `package-quickstart-refresh',
+;; which in turn calls `(package-initialize 'no-activate)'.  With
+;; `package-quickstart' t (set in early-init) AND a package being
+;; installed during init (e.g. a `use-package :ensure' block hitting a
+;; freshly-added package for the first time), that second
+;; `package-initialize' fires while `after-init-time' is still nil and
+;; `package--initialized' is already t — the "Unnecessary call to
+;; `package-initialize' in init file" warning.  We don't call
+;; `package-initialize' anywhere; the warning is package.el warning
+;; about its own second call.  Defer the quickstart refresh to
+;; `after-init-hook': `after-init-time' is set by then so the check
+;; passes, AND multiple installs in one init are coalesced into a
+;; single refresh (Emacs's own package.el has a FIXME asking for
+;; exactly this).
+(defun my/package-quickstart-maybe-refresh-deferred ()
+  "Defer `package-quickstart-refresh' to `after-init-hook'."
+  (if package-quickstart
+      (add-hook 'after-init-hook #'package-quickstart-refresh)
+    (ignore-errors (delete-file (concat package-quickstart-file "c")))
+    (ignore-errors (delete-file package-quickstart-file))))
+(advice-add 'package--quickstart-maybe-refresh :override
+            #'my/package-quickstart-maybe-refresh-deferred)
+
 ;; Divert Customize output to its own file so we don't accumulate
 ;; `custom-set-variables' / `custom-set-faces' blocks at the tail of
 ;; init.el.  The old inline block silently rewrote
