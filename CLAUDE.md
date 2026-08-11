@@ -66,6 +66,19 @@ code alone.
   face-pt/10 × text-scale zoom on every render; `:scale` sits in the
   cache key, so font/zoom changes regenerate images with no cache
   deletion. There is no size knob — do not add one back.
+- Org preview auto-toggle: `org-fragtog-mode`, enabled via the guarded
+  `my/org-fragtog-maybe` org-mode hook (MELPA package, android init
+  only). Clears a fragment's preview when point enters, re-runs
+  `org-latex-preview` on exit — org's analogue of AUCTeX auto-reveal.
+  It uses the normal `org-latex-preview` entry point, so whatever
+  sizing setup is active applies. First render of a fragment is a
+  synchronous compile (brief pause), then cached. The hook guard is
+  deliberate (offline-failed install must not error on .org visits or
+  block the cdlatex/yas hooks) — do not "simplify" it to a direct
+  hook. If a future org-buffer type (e.g. an LLM chat) suffers from
+  cursor-motion compiles or `$5`-style false math, scope it down with
+  `org-fragtog-ignore-predicates` or `(org-fragtog-mode -1)` there.
+  Do not replicate any of this in the Termux init (no image support).
 
 ## Folding + buffer font
 

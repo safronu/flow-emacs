@@ -721,5 +721,43 @@ the document font selected by `latex-font-sync-mode'.")
     (round (/ (* (frame-char-height) 72.0)
               (/ (face-attribute 'default :height) 10.0)))))
 
+;;; --- org-fragtog: auto-toggle LaTeX previews at point ---------------------
+;;
+;; Match the .tex flow's UX: AUCTeX preview overlays reveal their source
+;; when point enters and re-close on exit.  Org's own overlays only
+;; vanish on MODIFICATION — point motion does nothing.  org-fragtog
+;; (MELPA) watches point via a buffer-local post-command-hook: entering
+;; a fragment clears its preview (the source appears); leaving a
+;; fragment that has no overlay re-runs `org-latex-preview' on it.
+;; Consequences worth knowing:
+;;  - an unchanged fragment re-displays instantly from org's disk cache;
+;;  - ANY fragment you leave gets previewed — including ones you merely
+;;    cursored through and never previewed; the FIRST render of a
+;;    fragment is a synchronous compile (a moment of UI pause on this
+;;    device), after which it is cached;
+;;  - it goes through the normal `org-latex-preview' entry point, so
+;;    whatever sizing configuration is installed applies unchanged;
+;;  - if some future kind of org buffer (e.g. an LLM chat log) suffers
+;;    from cursor-motion compiles or `$5'-style false math fragments,
+;;    scope it down there with `org-fragtog-ignore-predicates' or
+;;    `(org-fragtog-mode -1)' — don't rip out the global hook.
+;;
+;; The :hook goes through `my/org-fragtog-maybe', NOT `org-fragtog-mode'
+;; directly, ON PURPOSE: if the one-time MELPA install failed (offline
+;; first launch), a direct hook would leave a dangling autoload that
+;; errors on EVERY .org visit and — because add-hook prepends — would
+;; also stop cdlatex/yasnippet from enabling in org buffers.  The guard
+;; degrades to "no auto-toggle" instead.  The install happens at the
+;; next launch with network (one-time, like ace-window).  Android
+;; Emacs only — the Termux build renders no images.
+
+(use-package org-fragtog
+  :preface
+  (defun my/org-fragtog-maybe ()
+    "Enable `org-fragtog-mode' if the package is available; else no-op."
+    (when (require 'org-fragtog nil 'noerror)
+      (org-fragtog-mode 1)))
+  :hook (org-mode . my/org-fragtog-maybe))
+
 (provide 'init)
 ;;; init.el ends here

@@ -185,7 +185,7 @@ cat <<EOF
 Next steps (manual):
   1. Launch the native Emacs app on the Boox. First run will fetch MELPA
      and install auctex, cdlatex, yasnippet, ace-window (+ avy dep),
-     gnu-elpa-keyring-update.
+     org-fragtog, gnu-elpa-keyring-update.
   2. Open ~/latex-scratch/test.tex; put point in a \$…\$ formula; press
      'C-c p p' to preview inline.
   3. See scratch/CHEATSHEET.md for keys.

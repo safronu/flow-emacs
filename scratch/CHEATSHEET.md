@@ -7,8 +7,8 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 
 1. Open the **Emacs** app (the native Android port).
 2. `C-x C-f` → open a `.tex` file (try `~/latex-scratch/test.tex`).
-3. First launch installs `auctex cdlatex yasnippet ace-window` (+ `avy` as
-   ace-window's dep) from MELPA — needs network.
+3. First launch installs `auctex cdlatex yasnippet ace-window org-fragtog`
+   (+ `avy` as ace-window's dep) from MELPA — needs network.
 
 ## Preview (inline PNG overlay)
 

@@ -90,7 +90,7 @@ bash install.sh
 
 1. **Launch Android Emacs**. First launch bootstraps MELPA + installs
    `use-package`, `auctex`, `cdlatex`, `yasnippet`, `ace-window` (+ `avy`
-   as its dependency), `gnu-elpa-keyring-update`. Takes a few minutes on
+   as its dependency), `org-fragtog`, `gnu-elpa-keyring-update`. Takes a few minutes on
    Wi-Fi, and you'll see byte-compile output scroll for each package —
    that's normal. Subsequent launches skip the network.
 2. Open the test file: `C-x C-f ~/latex-scratch/test.tex RET`.
