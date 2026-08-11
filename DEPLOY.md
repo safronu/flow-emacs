@@ -72,7 +72,8 @@ bash install.sh
    `install-tl -profile termux/texlive-basic.profile` (≈ 300 MB, 10–30 min).
 3. Installs the extra TeX packages we need: LaTeX kernel + preview-latex
    runtime + font families (`latex-bin`, `amsmath`, `amsfonts`,
-   `mathtools`, `standalone`, `varwidth`, `cm-super`, `psnfss`,
+   `mathtools`, `standalone`, `varwidth`, `cm-super`, `psnfss`, `ulem`,
+   `tools`, `hyperref`, `amscls`,
    `mylatex`, `preview`, `pgf`, `xkeyval`, `tex-gyre`, `tex-gyre-math`,
    `lm`, `lm-math`, `palatino`, `mathpazo`, `times`, `bookman`,
    `ncntrsbk`, `zapfchan`, `helvetic`, `courier`, `newtx`, `newpx`,
@@ -103,7 +104,7 @@ Run in Termux:
 
 ```bash
 source ~/.bashrc
-command -v pdflatex dvisvgm mutool gs latex-scratch          # all should print paths
+command -v pdflatex dvisvgm mutool gs latex-scratch notes-init  # all should print paths
 kpsewhich -var-value=TEXMFROOT                                # ends in /2026, NOT /2026.0
 kpsewhich pdflatex.fmt                                        # must return a path
 pdflatex -version | head -1                                   # TeX Live 2026/Termux

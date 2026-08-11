@@ -50,6 +50,22 @@ code alone.
   by `text-scale-mode-amount` so `C-x C-+/-` also resizes previews.
 - Do not restore the built-in `preview-get-dpi` — previews become
   invisible.
+- `org--get-display-dpi` is overridden too (same bogus-mm bug hitting
+  org's separate preview pipeline; also in `android-emacs/init.el`).
+  It returns a plain NUMBER while `preview-get-dpi` returns a CONS —
+  they serve different callers and are separate on purpose. Do not
+  merge or "deduplicate" them, and do not restore either built-in.
+  Org's preview cache does not key on DPI: after any DPI change,
+  delete `/data/data/org.gnu.emacs/files/ltximg`.
+  Org previews render via a custom `pdfpng` process — pdflatex+gs, a
+  tight `standalone`-class snippet header (org's stock header is a full
+  article page and gs cannot crop), transparent via pngalpha with
+  `:background "Transparent"`, same resolution equation as AUCTeX
+  preview. Sizing is fully automatic: `my/org-latex-auto-scale`
+  (advised before `org-latex-preview`) recomputes `:scale` =
+  face-pt/10 × text-scale zoom on every render; `:scale` sits in the
+  cache key, so font/zoom changes regenerate images with no cache
+  deletion. There is no size knob — do not add one back.
 
 ## Folding + buffer font
 
@@ -102,6 +118,9 @@ code alone.
   `/data/data/org.gnu.emacs/files/.emacs.d/init.el`, `~/.local/bin/…`)
   are **symlinks** into the repo. Edit files in the repo, not through
   the symlinks.
+- Exception: `notes-template/` is a *template*. `bin/notes-init` COPIES
+  it to create a user notes project (default `~/math-notes`) — notes are
+  content, not config, and are not symlinked back into this repo.
 - Byte-compiled `.elc` files are gitignored — they're regenerated from
   source.
 - No secrets are stored here — this repo can be published.

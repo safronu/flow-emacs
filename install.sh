@@ -10,7 +10,8 @@
 #   2. Installs TeX Live 2026 scheme-infraonly if not already present,
 #      then adds the LaTeX kernel + preview-latex runtime + the font
 #      families latex-font-sync knows about (latex-bin, amsmath, amsfonts,
-#      mathtools, standalone, varwidth, cm-super, psnfss, mylatex,
+#      mathtools, standalone, varwidth, cm-super, psnfss, ulem, tools,
+#      hyperref, amscls, mylatex,
 #      preview, pgf, xkeyval, tex-gyre*, lm*, palatino, mathpazo, times,
 #      bookman, ncntrsbk, zapfchan, helvetic, courier, newtx, newpx,
 #      kpfonts, pxfonts, fpl).
@@ -74,6 +75,15 @@ fi
 #     it pdflatex falls back to bitmap PK fonts and previews come out fuzzy.
 #   psnfss — provides `mathpazo.sty', `times.sty', `helvet.sty',
 #     `courier.sty' etc. (the .sty wrappers around the URW font metrics).
+#   tools — `xr.sty' (cross-document \externaldocument references for the
+#     Stacks-style notes; xr v6+ absorbed the old xr-hyper) plus multicol
+#     and the other LaTeX "required tools".
+#   hyperref — clickable \ref/\cite links in output PDFs (notes preamble).
+#   amscls — `amsart.cls' + `amsthm.sty' (theorem environments; NOT part
+#     of amsmath).
+#   ulem — required by org-mode's LaTeX-preview preamble
+#     (org-latex-default-packages-alist ships \usepackage[normalem]{ulem}
+#     with the snippet flag, so C-c C-x C-l compiles fail without it).
 #   preview / mylatex / pgf / xkeyval — preview-latex runtime.
 #   tex-gyre / tex-gyre-math / lm / lm-math — Latin Modern + TeX Gyre
 #     outlines, used to derive the bundled TTFs and also referenced from
@@ -91,6 +101,8 @@ if have tlmgr; then
     . "${PREFIX_}/etc/profile.d/texlive.sh" 2>/dev/null || true
     tlmgr install \
         latex-bin amsmath amsfonts mathtools standalone varwidth cm-super psnfss \
+        ulem \
+        tools hyperref amscls \
         mylatex preview pgf xkeyval \
         tex-gyre tex-gyre-math lm lm-math \
         palatino mathpazo times bookman ncntrsbk zapfchan helvetic courier \
@@ -126,6 +138,7 @@ link "${REPO}/termux/texlive-basic.profile" "${HOME_}/.texlive-basic.profile"
 log "Linking helper binaries onto ~/.local/bin"
 link "${REPO}/bin/latex-scratch"         "${HOME_}/.local/bin/latex-scratch"
 link "${REPO}/bin/latex-preview-server"  "${HOME_}/.local/bin/latex-preview-server"
+link "${REPO}/bin/notes-init"            "${HOME_}/.local/bin/notes-init"
 chmod +x "${REPO}/bin/"*
 
 log "Linking Termux Emacs config"

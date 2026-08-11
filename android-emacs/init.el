@@ -221,6 +221,57 @@ environment; otherwise the section."
                                     calc-prefer-frac t
                                     calc-angle-mode rad))))))))
 
+;;; --- RefTeX: reference navigation for Stacks-style notes ------------------
+;;
+;; RefTeX is a BUILT-IN package (it ships inside Emacs and is not
+;; distributed on any archive).  `package-installed-p' returns t for
+;; built-ins, so `:ensure t' would merely be a useless check — but
+;; `:ensure nil' states the intent explicitly (this repo's idiom for
+;; anything that must never be fetched from an archive).
+;;
+;;   C-c )   insert \ref from a label menu; `x' in the menu switches to
+;;           another chapter (any \externaldocument file in the preamble)
+;;           and prepends its prefix automatically
+;;   C-c &   jump from the \ref at point to the label definition — also
+;;           across chapters (RefTeX prefix-matches against the
+;;           \externaldocument declarations and parses that file on demand)
+;;   C-c (   insert \label, auto-prefixed by environment (lemma- etc.)
+;;   C-c =   table of contents; RET jumps
+;;
+;; `reftex-plug-into-AUCTeX t' turns on all five integration flags
+;; (labels/refs/cites/index prompts are taken over by RefTeX).  It works
+;; via `fset', so changing it needs an Emacs restart to undo.
+
+(use-package reftex
+  :ensure nil                ; built-in — never install from an archive
+  :hook (LaTeX-mode . turn-on-reftex)
+  :config
+  ;; YaSnippet's minor-mode map claims `C-c &' as a PREFIX for its
+  ;; snippet-management commands, and yas-minor-mode is on in every
+  ;; LaTeX buffer here — whether it or RefTeX's `reftex-view-crossref'
+  ;; wins the key would depend on minor-mode load order.  Free the key
+  ;; unconditionally; snippet management stays reachable via
+  ;; M-x yas-insert-snippet / M-x yas-visit-snippet-file.
+  (with-eval-after-load 'yasnippet
+    (define-key yas-minor-mode-map (kbd "C-c &") nil))
+  (setq reftex-plug-into-AUCTeX t)
+  ;; Teach RefTeX the theorem environments from the notes preamble, with
+  ;; Stacks-style label prefixes (`lemma-…', not `lem:…').  Entry format:
+  ;; (ENV KEY PREFIX REF-FORMAT CONTEXT MAGIC-WORDS).  KEY is the letter
+  ;; typed at the `C-c )' type prompt — `?h' for theorem because `?t'
+  ;; is taken by tables (same choice as RefTeX's own manual).  The magic
+  ;; words mean typing e.g. "Lemma " right before `C-c )' preselects the
+  ;; lemma menu.
+  (setq reftex-label-alist
+        '(("theorem"     ?h "theorem-"     "~\\ref{%s}" t ("theorem"     "thm."))
+          ("proposition" ?p "proposition-" "~\\ref{%s}" t ("proposition" "prop."))
+          ("lemma"       ?l "lemma-"       "~\\ref{%s}" t ("lemma"       "lem."))
+          ("corollary"   ?c "corollary-"   "~\\ref{%s}" t ("corollary"   "cor."))
+          ("definition"  ?d "definition-"  "~\\ref{%s}" t ("definition"  "def."))
+          ("example"     ?x "example-"     "~\\ref{%s}" t ("example"))
+          ("exercise"    ?X "exercise-"    "~\\ref{%s}" t ("exercise"))
+          ("remark"      ?r "remark-"      "~\\ref{%s}" t ("remark")))))
+
 ;;; --- preview-latex: inline overlays (karthinks-style) ---------------------
 ;;
 ;; AUCTeX's `preview' subsystem shells out to a LaTeX run that produces one
@@ -566,13 +617,85 @@ the document font selected by `latex-font-sync-mode'.")
 
 ;;; --- org-mode inline previews (bonus) -------------------------------------
 ;;
-;; In .org buffers, C-c C-x C-l previews all LaTeX fragments inline as SVG.
+;; In .org buffers, C-c C-x C-l previews LaTeX fragments inline as PNG,
+;; through the same pdflatex+gs pair as the C-c p p flow.
 
 (with-eval-after-load 'org
-  (setq org-preview-latex-default-process 'dvisvgm
-        org-preview-latex-image-directory
+  (setq org-preview-latex-image-directory
         (expand-file-name "ltximg/" (getenv "HOME")))
-  (plist-put org-format-latex-options :scale 1.6))
+
+  ;; Render org previews with the same binaries as the C-c p p flow
+  ;; (pdflatex → ghostscript → PNG).  Two deliberate differences from
+  ;; org's stock process entries:
+  ;;  - :latex-header builds the snippet on the `standalone' class (the
+  ;;    same border+varwidth wrapper the Termux <f5> flow uses), because
+  ;;    org's default header is a full `article' page and cropping is
+  ;;    normally the converter's job (dvipng -T tight / convert -trim);
+  ;;    gs has no crop switch, so the page itself must be tight.  This
+  ;;    header REPLACES org's default header AND its package injection,
+  ;;    hence the explicit package list.
+  ;;  - PNG instead of SVG: the SVG pt→px mapping at display time is
+  ;;    unmeasurable (that is why dvisvgm carries a hand-tuned 1.7
+  ;;    adjust); PNG at an exact gs -r resolution has no unknown, and
+  ;;    matches the .tex flow by construction.  (House rule: PNG.)
+  (add-to-list 'org-preview-latex-process-alist
+               '(pdfpng
+                 :programs ("pdflatex" "gs")
+                 :description "pdf > png, AUCTeX-preview-equivalent sizing"
+                 :message "you need to install pdflatex and ghostscript"
+                 :image-input-type "pdf"
+                 :image-output-type "png"
+                 :image-size-adjust (1.0 . 1.0)
+                 :latex-header
+                 "\\documentclass[border=1pt,varwidth]{standalone}\n\\usepackage{amsmath,amssymb,mathtools}\n\\usepackage[normalem]{ulem}\n\\usepackage[T1]{fontenc}\n\\usepackage{color}"
+                 :latex-compiler
+                 ("pdflatex -interaction nonstopmode -output-directory %o %f")
+                 :image-converter
+                 ("gs -q -dNOPAUSE -dBATCH -dSAFER -sDEVICE=pngalpha -r%D -sOutputFile=%O %f")))
+  (setq org-preview-latex-default-process 'pdfpng)
+
+  ;; Truly transparent fragments: org emits \pagecolor unless the
+  ;; :background option is the STRING "Transparent" (the default,
+  ;; `default', resolves to the face background and paints the page).
+  ;; With pngalpha this makes fragments sit on the page like the
+  ;; C-c p p overlays do.  :background is inside the cache key, so the
+  ;; change regenerates images by itself.
+  (plist-put org-format-latex-options :background "Transparent")
+
+  ;; Fully automatic sizing, no knobs: recompute :scale from the
+  ;; CURRENT default-face height and C-x C-+ zoom right before every
+  ;; render.  gs then runs at
+  ;;   -r%D = :scale × org--get-display-dpi
+  ;; which equals preview-latex's (face-pt/10) × char-metric-DPI — the
+  ;; sizing equation the .tex flow already uses on this device.
+  ;; `face-attribute' returns the BASE height (text-scale works via
+  ;; face remapping), so the zoom factor below is not double-counted.
+  ;; :scale is part of org's preview cache key, so a changed font size
+  ;; or zoom regenerates images automatically; each rendered size stays
+  ;; cached and is reused free when you switch back.
+  (defun my/org-latex-auto-scale (&rest _)
+    "Set org preview :scale from current font height and text-scale zoom."
+    (plist-put org-format-latex-options :scale
+               (* (/ (face-attribute 'default :height) 100.0)
+                  (if (bound-and-true-p text-scale-mode)
+                      (expt text-scale-mode-step text-scale-mode-amount)
+                    1.0))))
+  (advice-add 'org-latex-preview :before #'my/org-latex-auto-scale)
+
+  ;; Same Android bug as AUCTeX's `preview-get-dpi' (see the preview
+  ;; section above), fixed separately for org: the frame reports a bogus
+  ;; physical size (~3 m wide), so org's pixels/mm computation in
+  ;; `org--get-display-dpi' returns ~9 DPI.  Derive DPI from character
+  ;; metrics instead (same approach as `preview-get-dpi', but org wants
+  ;; a plain NUMBER, not a cons — do not merge the two functions).
+  ;; NOTE: org's preview cache key does NOT include the DPI, so after
+  ;; any change to THIS function, stale images must be deleted by hand:
+  ;;   rm -rf /data/data/org.gnu.emacs/files/ltximg
+  ;; (:scale changes need no such step — they re-key the cache.)
+  (defun org--get-display-dpi ()
+    "Android reports bogus monitor mm-size; derive DPI from char metrics."
+    (round (/ (* (frame-char-height) 72.0)
+              (/ (face-attribute 'default :height) 10.0)))))
 
 (provide 'init)
 ;;; init.el ends here

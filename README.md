@@ -17,6 +17,8 @@ inline previews, minimal typing.
   `pdflatex`, `dvisvgm`, `mutool`, `gs`.
 - **CDLaTeX + YaSnippet** for one-keystroke math (`mm`, `dm`, `fr`, `bmat`, …).
 - A `latex-scratch` command that opens a scratch `.tex` file in Emacs.
+- A `notes-init` command that scaffolds a Stacks-style multi-chapter
+  math-notes project with RefTeX-navigable cross-references.
 - An optional `latex-preview-server` (Python HTTP) for browser preview.
 
 ## Repository layout
@@ -46,7 +48,14 @@ boox-latex-setup/
 │
 ├── bin/                            Helper scripts on $PATH
 │   ├── latex-scratch               Scratch .tex file + open in Emacs
-│   └── latex-preview-server        HTTP preview server (Python)
+│   ├── latex-preview-server        HTTP preview server (Python)
+│   └── notes-init                  Scaffold a Stacks-style notes project
+│
+├── notes-template/                 Template for math-notes projects
+│   ├── preamble.tex                Shared preamble (amsart, xr, hyperref)
+│   ├── chapter-template.tex        Copy to <name>.tex per chapter
+│   ├── build.sh                    Incremental two-pass chapter builds
+│   └── README.md                   Label/reference conventions
 │
 └── scratch/                        Playground
     ├── CHEATSHEET.md               One-page keys reference
@@ -155,6 +164,9 @@ See [`DEPLOY.md`](./DEPLOY.md). The short version:
 - Preview a formula: point on it, `C-c p p`.
 - Preview whole buffer: `C-c p b`.
 - Clear previews: `C-c p c`.
+- Math notes: `notes-init` scaffolds a Stacks-style multi-chapter project
+  (`~/math-notes` by default); references via RefTeX — `C-c )` to insert,
+  `C-c &` to follow, `C-c =` for the TOC.
 - Full cheatsheet: [`scratch/CHEATSHEET.md`](./scratch/CHEATSHEET.md).
 
 ## Troubleshooting
@@ -167,6 +179,7 @@ short:
 | `pdflatex.fmt` not found | `TEXMFROOT` env in `android-emacs/early-init.el` |
 | dvisvgm rejects PDF | `pkg install mupdf-tools` (Termux gs ≥10.01 needs mutool) |
 | Overlay disappears / invisible | `preview-get-dpi` override in `android-emacs/init.el` |
+| Org `C-c C-x C-l` fragment shrinks to a smudge (or `ulem.sty` not found) | `org--get-display-dpi` override in `android-emacs/init.el` — same bogus-DPI bug, separate fix. After changing DPI, delete the stale cache: `rm -rf /data/data/org.gnu.emacs/files/ltximg`. `ulem` is in install.sh's tlmgr list. |
 | Startup hangs at "Connecting to melpa" | `package-refresh-contents` is now first-run only |
 | Signature verify fails | `package-check-signature nil` in `early-init.el` |
 | Buffer font didn't change after adding `\usepackage{mathpazo}` | `M-x my/latex-font-explain` — check "Resolved" line; if nil, the TTF isn't installed (restart Emacs after `install.sh`) |
