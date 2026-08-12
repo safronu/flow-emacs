@@ -66,7 +66,7 @@ flow-emacs/
 │   ├── flow-core.el                Package system, defaults, M-o windows
 │   ├── flow-latex.el               AUCTeX, RefTeX, cdlatex, yas, folding
 │   ├── flow-preview.el             Inline previews (.tex + .org) — GUI only
-│   ├── flow-page-view.el           Page-like margins + auto-previews + live PDF
+│   ├── flow-live-pdf.el            C-c p l: fresh compiled PDF, ace-window placed
 │   ├── flow-deadlines.el           Guarded loader for the private repo
 │   ├── latex-font-sync.el          Buffer :family follows LaTeX font package
 │   ├── latex-font-sync-tests.el    ERT tests for the above
@@ -103,22 +103,17 @@ only the entry points are linked — everything else loads from the
 working tree through that symlink. Editing a file in the repo takes
 effect the next time the relevant program is launched.
 
-## Page view — reading the source like the compiled page
+## Live compiled PDF
 
-`flow-page-view-mode` (on by default in LaTeX buffers on the android and
-laptop profiles; `C-c p v` toggles per buffer) combines: page-like
-margins around a fixed text column (olivetti), automatic math previews
-as formulas scroll into view (preview-auto — the buffer stays rendered,
-the fragment at point shows source), TeX-fold's styled markup, the
-document font via latex-font-sync, and — on the laptop — a PDF-like
-heading scale (`flow-latex-sectioning-scale`; the e-ink profile keeps
-1.0 because scaled faces repaint badly there).
-
-What it deliberately does not fake in-buffer: justification, page
-breaks, float placement, centred display math (overlays sit where the
-source sits).  For the real thing, `C-c p l` (`flow-latex-live-pdf`)
-opens the actual compiled PDF in a side window and keeps it fresh —
-via `latexmk -pvc` when installed, else by recompiling on save.
+`C-c p l` (`flow-latex-live-pdf`, android + laptop profiles) toggles the
+actual compiled PDF of the current document, kept fresh — via
+`latexmk -pvc` when installed (watches all inputs, handles
+bibtex/multi-pass), else by recompiling with pdflatex on every save.
+Where the PDF goes is asked in ace-window's language: every window
+shows its selection letter; press one to place the PDF there, or use a
+dispatch key first (`b` split side-by-side, `v` split top/bottom).
+`C-g` cancels.  Displayed through pdf-tools when installed, otherwise
+built-in doc-view, with auto-revert repainting on each rebuild.
 
 ## Laptop notes
 

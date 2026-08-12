@@ -36,14 +36,6 @@
       flow-theme 'modus-operandi      ; pure white background
       flow-monochrome-latex-faces t   ; hue carries nothing on 16 grays
       flow-latex-fold t
-      ;; Page view on the tablet too: margins cost nothing, and
-      ;; preview-auto's compiles run async through the same Termux
-      ;; pdflatex as C-c p b.  If scroll-triggered compiles feel heavy
-      ;; on e-ink, C-c p v turns it off per buffer (or set this nil).
-      ;; Sectioning scale stays at the 1.0 default — scaled heading
-      ;; faces repaint badly on the 16-gray panel.
-      flow-page-view t
-      flow-page-view-width 90
       flow-aw-leading-char-height 2.5 ; spottable on a 13" panel
       flow-org-preview-image-directory (expand-file-name "ltximg/" (getenv "HOME"))
       ;; The deadlines checkout lives in the Termux home (same UID, so it
@@ -79,7 +71,7 @@
 (flow-load "flow-core")       ; packages, defaults, M-o window management
 (flow-load "flow-latex")      ; AUCTeX, cdlatex, snippets, folding
 (flow-load "flow-preview")    ; inline previews in .tex and .org
-(flow-load "flow-page-view")  ; margins + auto-previews + live PDF (C-c p v/l)
+(flow-load "flow-live-pdf")   ; C-c p l: compiled PDF in a chosen window
 
 ;;; --- Buffer font follows the document font --------------------------------
 ;;

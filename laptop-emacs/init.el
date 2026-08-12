@@ -37,13 +37,6 @@
       flow-theme 'modus-operandi
       flow-monochrome-latex-faces nil
       flow-latex-fold t
-      ;; Page view: margins + auto-rendered math, so the buffer reads
-      ;; like the compiled page.  Toggle per-buffer with C-c p v.
-      flow-page-view t
-      flow-page-view-width 90
-      ;; PDF-like type scale for folded \section/\subsection headings.
-      ;; The e-ink profile keeps 1.0 (scaled faces repaint badly there).
-      flow-latex-sectioning-scale 1.2
       flow-aw-leading-char-height 2.0
       ;; Deadlines checkout lives next to this repo in the flow folder.
       flow-deadlines-repo
@@ -63,7 +56,7 @@
 (flow-load "flow-core")       ; packages, defaults, M-o window management
 (flow-load "flow-latex")      ; AUCTeX, cdlatex, snippets, folding
 (flow-load "flow-preview")    ; inline previews in .tex and .org
-(flow-load "flow-page-view")  ; margins + auto-previews + live PDF (C-c p v/l)
+(flow-load "flow-live-pdf")   ; C-c p l: compiled PDF in a chosen window
 
 ;; Buffer font follows the document's font package.  The TeX Gyre and
 ;; Latin Modern families are installed system-wide by TeX Live on this

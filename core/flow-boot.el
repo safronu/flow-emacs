@@ -91,23 +91,6 @@ awkward to point at.")
 (defvar flow-latex-fold t
   "Non-nil to enable `TeX-fold-mode' in LaTeX buffers and fold on open.")
 
-(defvar flow-latex-sectioning-scale 1.0
-  "Height multiplier for folded sectioning commands, compounded per level.
-1.0 = all headings at body size (the e-ink choice: scaled faces repaint
-badly there).  ~1.2 gives a PDF-like type scale on an LCD.  This is
-AUCTeX's `font-latex-fontify-sectioning'; its script-raising stays off
-regardless.")
-
-(defvar flow-page-view nil
-  "Non-nil to turn on `flow-page-view-mode' in every LaTeX buffer.
-Page view = wide margins around a fixed text column (olivetti) plus
-automatic math previews as formulas scroll into view (preview-auto),
-approximating the compiled page while staying editable source.  Needs a
-graphical frame; pointless on a tty.")
-
-(defvar flow-page-view-width 90
-  "Text-column width, in columns, for `flow-page-view-mode'.")
-
 (defvar flow-aw-leading-char-height 2.0
   "Scale of ace-window's selection letters, relative to the default face.")
 

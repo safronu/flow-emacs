@@ -42,7 +42,7 @@
         ;; properties: the visual shift makes the caret jump across lines
         ;; while editing.  Rendered math is what previews are for.
         font-latex-fontify-script nil
-        font-latex-fontify-sectioning flow-latex-sectioning-scale)
+        font-latex-fontify-sectioning 1.0)
 
   (when flow-latex-prettify-symbols
     (add-hook 'LaTeX-mode-hook #'prettify-symbols-mode))
