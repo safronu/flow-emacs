@@ -97,6 +97,26 @@
 ;; hard-crash the app's font backend on face-remap.
 
 (flow-load "latex-font-sync")
+
+;; Prefer the Demi cuts on e-ink: regular LM/TeX Gyre hairlines wash
+;; out on the 16-gray panel, bold is squat — demi is the print-like
+;; middle.  "Latin Modern Roman Demi" is the OFFICIAL LM demi weight
+;; (converted OTF→TTF with tools/otf2ttf.py); the TeX Gyre demis are
+;; synthesized by outline offsetting (tools/embolden.py, +20 units) —
+;; the family has no real demi.  Regular cuts stay as fallbacks for a
+;; repo checkout that predates the demi TTFs.
+(setq my/latex-font-user-candidates
+      '((:family/lm-roman . ("Latin Modern Roman Demi" "Latin Modern Roman"
+                             "Noto Serif" "serif"))
+        (:family/palatino . ("TeX Gyre Pagella Demi" "TeX Gyre Pagella"
+                             "Noto Serif" "serif"))
+        (:family/times    . ("TeX Gyre Termes Demi" "TeX Gyre Termes"
+                             "Noto Serif" "serif"))
+        (:family/bookman  . ("TeX Gyre Bonum Demi" "TeX Gyre Bonum"
+                             "Noto Serif" "serif"))
+        (:family/newcent  . ("TeX Gyre Schola Demi" "TeX Gyre Schola"
+                             "Noto Serif" "serif"))))
+
 (latex-font-sync-mode 1)
 
 ;;; --- Deadlines (private repo, loaded only if cloned) ----------------------

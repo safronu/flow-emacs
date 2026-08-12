@@ -164,6 +164,24 @@ code alone.
   deliberately *not* remapped.  See `flow-latex-code-font-faces` in
   `core/flow-latex.el`.
 
+## Bundled fonts
+
+- `android-emacs/fonts/` also carries **Demi** cuts, preferred by the
+  android profile (`my/latex-font-user-candidates` in its init.el):
+  regular LM/TeX Gyre hairlines wash out on e-ink, bold is squat.
+  "Latin Modern Roman Demi" is LM's OFFICIAL demi weight, converted
+  from TeX Live's OTF with `tools/otf2ttf.py`.  The TeX Gyre demis are
+  SYNTHESIZED (`tools/embolden.py`: union of outline and its 20-unit
+  stroke) — those families ship no real demi.
+- `*.ttf` is gitignored — new font files need `git add -f`.
+- Two traps learned converting: (1) fontTools keeps the source's
+  `OTTO` sfnt tag; a glyf font in an OTTO wrapper is rejected before
+  any table is read — set `sfntVersion` explicitly (otf2ttf.py does).
+  (2) fontconfig caches a rejected file against its path; after fixing
+  a font, reinstalling under the SAME filename can keep failing on the
+  laptop — rename or clear the cache.  Android Emacs has no fontconfig
+  (it scans `$HOME/fonts` itself), so only the laptop hits this.
+
 ## Package system quirks
 
 - `package-check-signature` is set to `nil` in early-init because GNU
