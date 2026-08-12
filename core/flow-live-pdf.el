@@ -19,6 +19,48 @@
 
 ;;; Code:
 
+;;; --- doc-view: make the fallback viewer actually pleasant ------------------
+;;
+;; Out of the box doc-view is why "the PDF looks bad": it rasterises
+;; pages at a hardcoded 100 DPI and displays that bitmap 1:1, which on
+;; a ~200 DPI panel is a 2x-blurry postage stamp.  And with
+;; `doc-view-continuous' nil, C-n / the wheel stop dead at the bottom
+;; of each page instead of flowing to the next.
+;;
+;; Render at double the display's REAL resolution (derived from
+;; character metrics — the same trick as `preview-get-dpi' in
+;; flow-preview.el, because the reported monitor size lies on both our
+;; devices), then let doc-view's internal scaling fit the sharp bitmap
+;; to the window.  Downscaling a 2x render is crisp; upscaling a 100
+;; DPI render never can be.
+
+(defun flow--display-dpi ()
+  "The display's true DPI, from character metrics (reported size lies)."
+  (/ (* (frame-char-height) 72.0)
+     (/ (face-attribute 'default :height) 10.0)))
+
+(with-eval-after-load 'doc-view
+  (setq doc-view-resolution (min 600 (round (* 2 (flow--display-dpi))))
+        ;; Scroll straight through page boundaries.
+        doc-view-continuous t
+        ;; Scale the rendered bitmap inside Emacs (native scaling) so
+        ;; fit-to-window downsamples the sharp render.
+        doc-view-scale-internally t))
+
+(defun flow--live-pdf-tune-docview (buf window)
+  "In doc-view BUF, fit the page bitmap to WINDOW's width, keep it fitted."
+  (with-current-buffer buf
+    (when (derived-mode-p 'doc-view-mode)
+      ;; Display width = the window it lives in, so the 2x render is
+      ;; downscaled to exactly fit — sharp and fully visible.
+      (setq-local doc-view-image-width (max 400 (window-body-width window t)))
+      ;; auto-revert re-runs conversion on each rebuild; the buffer-local
+      ;; width survives, so nothing else is needed to stay fitted.  The
+      ;; fit command errors if the first page conversion hasn't finished
+      ;; yet — harmless then, since the width above already applies to
+      ;; the image once it appears.
+      (ignore-errors (doc-view-fit-width-to-window)))))
+
 (defvar-local flow--live-pdf-proc nil
   "The latexmk -pvc process watching this buffer's master, if any.")
 
@@ -60,10 +102,12 @@ prompt."
         (auto-revert-mode 1))
       (if (window-live-p window)
           (progn (set-window-buffer window buf)
-                 (select-window window))
+                 (select-window window)
+                 (flow--live-pdf-tune-docview buf window))
         ;; The chosen window died while we compiled; don't re-prompt from
         ;; a timer — just show the buffer wherever display-buffer likes.
-        (display-buffer buf)))))
+        (when-let* ((win (display-buffer buf)))
+          (flow--live-pdf-tune-docview buf win))))))
 
 (defun flow-latex-live-pdf ()
   "Toggle a continuously recompiled PDF of this document.
