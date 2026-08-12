@@ -94,6 +94,34 @@
 
 (flow-load "flow-deadlines")
 
+;;; --- Telega: Telegram client (native Android Emacs only) ------------------
+;;
+;; Telega talks to Telegram via `telega-server', a small C shim that
+;; dynamically loads TDLib (`libtdjson.so').
+;;
+;; TDLib source: `install.sh' builds TDLib from github.com/tdlib/td and
+;; installs it under `$HOME/.local/tdlib' (headers + libs).  We do NOT
+;; use Termux's `libtd' package — it's frozen at 1.8.50 and telega
+;; ≥ 2026-01 requires ≥ 1.8.56 (current master wants ≥ 1.8.66).  The
+;; `telega-server-libs-prefix' setting below hands that prefix to the
+;; server's Makefile (`-I$prefix/include', `-L$prefix/lib', rpath), so
+;; `M-x telega-server-build' links against the right libtdjson without
+;; touching pkg-config or system paths.
+;;
+;; Deferred via `:commands' so a normal LaTeX-focused startup never
+;; loads telega: no TDLib mmap, no auth check, no image/network I/O
+;; until the first `M-x telega'.  `use-package-always-ensure' picks the
+;; package up on a fresh device.
+;;
+;; The Termux Emacs build has no image support (avatars/photos/stickers
+;; would all fail to render), so this is deliberately NOT mirrored in
+;; `termux-emacs/init.el'.
+
+(use-package telega
+  :commands (telega)
+  :custom
+  (telega-server-libs-prefix (expand-file-name "~/.local/tdlib")))
+
 ;;; --- E-ink monochrome face signatures -------------------------------------
 ;;
 ;; Typographic re-encoding of syntax/diff/org meaning for the 16-gray

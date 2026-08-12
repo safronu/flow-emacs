@@ -40,7 +40,8 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 # ── 1. Termux packages ────────────────────────────────────────────────────
 log "Installing Termux packages"
-pkg install -y emacs git perl python wget ghostscript mupdf-tools texlive-bin texlive-installer
+pkg install -y emacs git perl python wget ghostscript mupdf-tools texlive-bin \
+    texlive-installer
 
 # ── 2. TeX Live ───────────────────────────────────────────────────────────
 TL_YEAR=2026
@@ -182,7 +183,59 @@ else
     log "Android Emacs not installed (${ANDROID_EMACS_HOME} missing) — skipping"
 fi
 
-# ── 4. Scratch playground ─────────────────────────────────────────────────
+# ── 4. TDLib for telega.el (native Emacs only) ────────────────────────────
+#
+# telega.el >= 2026-01 requires TDLib >= 1.8.56 (master today wants 1.8.66),
+# but Termux's `libtd' package is frozen at 1.8.50 and no telega version
+# supports 1.8.50 anymore.  So we build TDLib from source into a userland
+# prefix and hand its path to `telega-server-build' via the elisp custom
+# `telega-server-libs-prefix' set in android-emacs/init.el.
+#
+# The build is a one-shot (~1–2 hours on a Boox Note Max, single-digit-GB
+# RAM peak → uses `-j2' to stay under swap pressure).  Guarded by a version
+# check so re-runs of install.sh don't rebuild unless TDLib upstream moved
+# past what's installed.  Skipped entirely if Android Emacs is absent or
+# `SKIP_TELEGA=1' is set in the environment.
+TDLIB_PREFIX="${HOME_}/.local/tdlib"
+TDLIB_MIN_VERSION="1.8.66"
+TDLIB_INSTALLED_VERSION=""
+if [ -f "${TDLIB_PREFIX}/include/td/telegram/td_api.h" ]; then
+    # TDLib doesn't ship a version macro in headers; grep the pkgconfig file
+    # cmake installs alongside libs.
+    TDLIB_INSTALLED_VERSION="$(grep -m1 '^Version:' \
+        "${TDLIB_PREFIX}/lib/pkgconfig/tdjson.pc" 2>/dev/null | awk '{print $2}')"
+fi
+version_ge() { [ "$(printf '%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]; }
+
+if [ -d "${ANDROID_EMACS_HOME}" ] && [ -z "${SKIP_TELEGA:-}" ] && \
+   ! version_ge "${TDLIB_INSTALLED_VERSION:-0}" "${TDLIB_MIN_VERSION}"; then
+    log "Building TDLib ${TDLIB_MIN_VERSION}+ into ${TDLIB_PREFIX} (long)"
+    pkg install -y cmake gperf
+    mkdir -p "${HOME_}/src"
+    if [ ! -d "${HOME_}/src/tdlib/.git" ]; then
+        git clone --depth=1 --branch master \
+            https://github.com/tdlib/td.git "${HOME_}/src/tdlib"
+    else
+        git -C "${HOME_}/src/tdlib" fetch --depth=1 origin master
+        git -C "${HOME_}/src/tdlib" reset --hard origin/master
+    fi
+    mkdir -p "${HOME_}/src/tdlib/build"
+    cmake -S "${HOME_}/src/tdlib" -B "${HOME_}/src/tdlib/build" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="${TDLIB_PREFIX}" \
+        -DTD_ENABLE_LTO=OFF
+    # -j2 keeps peak RAM under the ~1.5 GB/proc that `td_api_json.cpp.o'
+    # can spike to; -j4 OOMs on 6 GB devices.  Redirect to a log so a
+    # dropped ssh/terminal doesn't kill the build via SIGHUP.
+    nohup cmake --build "${HOME_}/src/tdlib/build" --target install -j2 \
+        > "${HOME_}/src/tdlib/build.log" 2>&1
+    log "TDLib install done: $(grep -m1 '^Version:' \
+        "${TDLIB_PREFIX}/lib/pkgconfig/tdjson.pc" 2>/dev/null | awk '{print $2}')"
+elif [ -n "${TDLIB_INSTALLED_VERSION}" ]; then
+    log "TDLib ${TDLIB_INSTALLED_VERSION} already at ${TDLIB_PREFIX} — skipping"
+fi
+
+# ── 5. Scratch playground ─────────────────────────────────────────────────
 log "Setting up ~/latex-scratch"
 mkdir -p "${HOME_}/latex-scratch"
 link "${REPO}/scratch/test.tex"      "${HOME_}/latex-scratch/test.tex"
@@ -194,8 +247,10 @@ cat <<EOF
 Next steps (manual):
   1. Launch the native Emacs app on the Boox. First run will fetch MELPA
      and install auctex, cdlatex, yasnippet, ace-window (+ avy dep),
-     org-fragtog, gnu-elpa-keyring-update.
+     org-fragtog, gnu-elpa-keyring-update, telega.
   2. Open ~/latex-scratch/test.tex; put point in a \$…\$ formula; press
      'C-c p p' to preview inline.
-  3. See scratch/CHEATSHEET.md for keys.
+  3. Telegram (optional): 'M-x telega-server-build' once (links against
+     the TDLib installed above), then 'M-x telega' and sign in.
+  4. See scratch/CHEATSHEET.md for keys.
 EOF

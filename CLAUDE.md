@@ -159,6 +159,24 @@ code alone.
   `after-init-time` (silencing the check) and coalesces multi-install
   runs. Do not remove the advice.
 
+## Telega / TDLib
+
+- `telega.el` is installed on the native Android Emacs only (Termux
+  Emacs has no image support — avatars/photos/stickers wouldn't render).
+- `telega-server` links against **our own TDLib build**, not Termux's
+  `libtd` package. Termux ships `libtd 1.8.50` and hasn't bumped it;
+  telega ≥ 2026-01 requires ≥ 1.8.56 (master wants ≥ 1.8.66), and
+  overriding the version check risks silent breakage on newer API
+  calls. `install.sh` clones `github.com/tdlib/td` and installs to
+  `~/.local/tdlib`; the elisp custom `telega-server-libs-prefix` in
+  `android-emacs/init.el` hands that path to the server's Makefile
+  via `LIBS_PREFIX` (produces `-I`, `-L`, and `-Wl,-rpath` flags).
+  The build is a one-shot ~1–2 hours with peak ~1.5 GB/proc; `-j2`
+  fits under this device's 6 GB RAM budget, `-j4` OOMs.
+- Do NOT `pkg install libtd libtd-static`. It fights our custom install
+  path on `LD_LIBRARY_PATH` and pkg-config lookups if you ever run
+  `telega-server-build` without `LIBS_PREFIX`.
+
 ## Repo conventions
 
 - Every user-visible config file lives inside this repo. The live

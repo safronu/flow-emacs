@@ -86,25 +86,42 @@ bash install.sh
    `lm`, `lm-math`, `palatino`, `mathpazo`, `times`, `bookman`,
    `ncntrsbk`, `zapfchan`, `helvetic`, `courier`, `newtx`, `newpx`,
    `kpfonts`, `pxfonts`, `fpl`).
-4. Symlinks every config file from this repo to its live location
+4. **Builds TDLib** from `github.com/tdlib/td` (master branch) into
+   `~/.local/tdlib` if the native Emacs app is present and TDLib is not
+   already at ≥ 1.8.66 there. This is a **1–2 hour compile** on the
+   Boox Note Max (peak RAM ~1.5 GB per process, `-j2`, ~5 GB disk under
+   `~/src/tdlib`). Termux's `libtd` package is stuck at 1.8.50, which
+   no current telega.el can talk to — hence the source build. Skip with
+   `SKIP_TELEGA=1 bash install.sh` if you don't want telega. Re-runs of
+   `install.sh` skip the build unless upstream moved past what's installed.
+5. Symlinks every config file from this repo to its live location
    (`~/.bashrc`, `~/.config/emacs/…`, `/data/data/org.gnu.emacs/files/.emacs.d/…`,
    `~/.local/bin/…`).
-5. Creates `~/latex-scratch/` and symlinks `test.tex` + `CHEATSHEET.md`
+6. Creates `~/latex-scratch/` and symlinks `test.tex` + `CHEATSHEET.md`
    in from `scratch/`.
-6. Creates convenience symlinks so the Android Emacs app can reach Termux
+7. Creates convenience symlinks so the Android Emacs app can reach Termux
    files: `~/latex-scratch` and `~/termux-home` in its HOME.
 
 ## After install (manual)
 
 1. **Launch Android Emacs**. First launch bootstraps MELPA + installs
    `use-package`, `auctex`, `cdlatex`, `yasnippet`, `ace-window` (+ `avy`
-   as its dependency), `org-fragtog`, `gnu-elpa-keyring-update`. Takes a few minutes on
-   Wi-Fi, and you'll see byte-compile output scroll for each package —
-   that's normal. Subsequent launches skip the network.
+   as its dependency), `org-fragtog`, `gnu-elpa-keyring-update`, and
+   `telega`. Takes a few minutes on Wi-Fi, and you'll see byte-compile
+   output scroll for each package — that's normal. Subsequent launches
+   skip the network.
 2. Open the test file: `C-x C-f ~/latex-scratch/test.tex RET`.
 3. Point on `$ e^{i\pi} + 1 = 0 $` → `C-c p p`. Expect an inline PNG overlay.
 4. If it hangs on "Connecting to melpa", you're on a very slow connection —
    let it finish once, or force-close and reopen (bootstrap will retry).
+5. **Telegram (optional):** `M-x telega-server-build` once. It links
+   against the TDLib built in step 4 of the automated phase — the elisp
+   custom `telega-server-libs-prefix` (set in `android-emacs/init.el` to
+   `~/.local/tdlib`) drives the server's `Makefile` to `-I` / `-L` /
+   `-Wl,-rpath` that prefix. Binary lands at `~/.telega/telega-server`.
+   Then `M-x telega` and sign in (phone number → SMS code, or QR from
+   another logged-in Telegram client). Auth state persists under
+   `~/.telega/`.
 
 ## Verification checklist
 
