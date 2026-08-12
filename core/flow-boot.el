@@ -93,12 +93,21 @@ awkward to point at.")
 
 (defvar flow-font-sync-weight nil
   "Weight for the font-sync buffer remap, or nil to keep the regular cut.
-The e-ink profile sets `bold': Latin Modern and the TeX Gyre text
-families draw print-grade hairlines that read faint on a 16-gray
-panel, and none of them ship a medium weight — bold is their only
-sturdier cut.  Known cost: folded \\textbf{...} no longer stands out
-against body text in those buffers.  Purely a display remap; previews
-and the compiled document are untouched.")
+Tried as `bold' on e-ink against the hairline problem and rejected:
+bold LM/TeX Gyre glyphs are wider and squatter than the regular cut,
+so the buffer stopped looking like the compiled document.  The e-ink
+answer is `flow-font-sync-extra-scale' instead — a larger REGULAR cut
+has proportionally identical glyphs whose hairlines are simply more
+pixels wide.  Knob kept for experiments.")
+
+(defvar flow-font-sync-extra-scale 1.0
+  "Device multiplier on top of the per-family optical scale.
+The e-ink profile raises it: at print sizes, LM/TeX Gyre hairlines are
+too few pixels wide for a 16-gray panel, and since these families ship
+no medium weight, the sturdiness has to come from SIZE — a bigger
+regular cut keeps the compiled document's exact proportions while its
+strokes cross the legibility threshold.  Previews track automatically
+through the effective-font DPI.")
 
 (defvar flow-preview-scale 1.25
   "Extra scale on math previews WHEN the buffer shows the code font.

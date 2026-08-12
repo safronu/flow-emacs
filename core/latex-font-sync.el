@@ -229,8 +229,9 @@ effective-font DPI)."
              (display-graphic-p))
     (let* ((intended (my/latex-detect-intended-family))
            (family   (and intended (my/latex-resolve-family intended)))
-           (scale    (or (cdr (assq intended my/latex-font-optical-scale-alist))
-                         1.0)))
+           (scale    (* (or (cdr (assq intended my/latex-font-optical-scale-alist))
+                            1.0)
+                        (or (bound-and-true-p flow-font-sync-extra-scale) 1.0))))
       (when (and family (not (equal family my/latex-current-family)))
         (when my/latex-face-remap-cookie
           (face-remap-remove-relative my/latex-face-remap-cookie))

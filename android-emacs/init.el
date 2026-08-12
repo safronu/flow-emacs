@@ -36,11 +36,13 @@
       flow-theme 'modus-operandi      ; pure white background
       flow-monochrome-latex-faces t   ; hue carries nothing on 16 grays
       flow-latex-fold t
-      ;; Document fonts in their bold cut: LM/TeX Gyre hairlines read
-      ;; faint on the 16-gray panel and no medium weight exists.  The
-      ;; user chose authentic-family-in-bold over a sturdier substitute
-      ;; family.  Cost accepted: folded \textbf no longer stands out.
-      flow-font-sync-weight 'bold
+      ;; E-ink hairline strategy: a LARGER regular cut, not bold.  Bold
+      ;; was tried and looked squat next to the compiled PDF (wider
+      ;; glyphs, closed counters).  Extra size keeps the document's
+      ;; exact proportions while making the hairlines more pixels wide;
+      ;; \textbf folds stand out again.  Tune to taste — previews
+      ;; follow automatically.
+      flow-font-sync-extra-scale 1.15
       flow-aw-leading-char-height 2.5 ; spottable on a 13" panel
       flow-org-preview-image-directory (expand-file-name "ltximg/" (getenv "HOME"))
       ;; The deadlines checkout lives in the Termux home (same UID, so it
