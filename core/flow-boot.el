@@ -91,6 +91,15 @@ awkward to point at.")
 (defvar flow-latex-fold t
   "Non-nil to enable `TeX-fold-mode' in LaTeX buffers and fold on open.")
 
+(defvar flow-font-sync-weight nil
+  "Weight for the font-sync buffer remap, or nil to keep the regular cut.
+The e-ink profile sets `bold': Latin Modern and the TeX Gyre text
+families draw print-grade hairlines that read faint on a 16-gray
+panel, and none of them ship a medium weight — bold is their only
+sturdier cut.  Known cost: folded \\textbf{...} no longer stands out
+against body text in those buffers.  Purely a display remap; previews
+and the compiled document are untouched.")
+
 (defvar flow-preview-scale 1.25
   "Extra scale on math previews WHEN the buffer shows the code font.
 Em-for-em, Computer Modern math looks SMALLER than monospace text: its

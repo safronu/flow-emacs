@@ -235,7 +235,11 @@ effective-font DPI)."
         (when my/latex-face-remap-cookie
           (face-remap-remove-relative my/latex-face-remap-cookie))
         (setq my/latex-face-remap-cookie
-              (face-remap-add-relative 'default :family family :height scale)
+              (apply #'face-remap-add-relative 'default
+                     :family family :height scale
+                     ;; e-ink knob: these families' only sturdy cut.
+                     (when (bound-and-true-p flow-font-sync-weight)
+                       (list :weight flow-font-sync-weight)))
               my/latex-current-family family)
         ;; Character metrics shifted → existing preview overlays are now
         ;; slightly the wrong pixel size.  Clear them so C-c p p regenerates
