@@ -35,6 +35,7 @@ boox-latex-setup/
 │   ├── init.el                     AUCTeX + preview-latex + cdlatex + yas
 │   ├── latex-font-sync.el          Buffer :family follows LaTeX font package
 │   ├── latex-font-sync-tests.el    ERT tests for the above
+│   ├── eink-faces.el               Monochrome typographic face signatures
 │   ├── fonts/                      TTF conversions of TeX Gyre + Latin Modern
 │   └── snippets/latex-mode/        mm, dm, sr, sb, ee
 │

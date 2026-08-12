@@ -153,6 +153,7 @@ if [ -d "${ANDROID_EMACS_HOME}" ]; then
     link "${REPO}/android-emacs/early-init.el"        "${ANDROID_EMACS_D}/early-init.el"
     link "${REPO}/android-emacs/init.el"              "${ANDROID_EMACS_D}/init.el"
     link "${REPO}/android-emacs/latex-font-sync.el"   "${ANDROID_EMACS_D}/latex-font-sync.el"
+    link "${REPO}/android-emacs/eink-faces.el"        "${ANDROID_EMACS_D}/eink-faces.el"
     for s in mm dm sr sb ee; do
         link "${REPO}/android-emacs/snippets/latex-mode/$s" \
              "${ANDROID_EMACS_D}/snippets/latex-mode/$s"

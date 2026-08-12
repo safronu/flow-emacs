@@ -65,7 +65,9 @@ code alone.
   (advised before `org-latex-preview`) recomputes `:scale` =
   face-pt/10 × text-scale zoom on every render; `:scale` sits in the
   cache key, so font/zoom changes regenerate images with no cache
-  deletion. There is no size knob — do not add one back.
+  deletion. There is no size knob — do not add one back.  `C-c p p/b/c`
+  mirror the .tex preview keys in org buffers (bound in `org-mode-map`;
+  org's `C-c C-x C-l` untouched).
 - Org preview auto-toggle: `org-fragtog-mode`, enabled via the guarded
   `my/org-fragtog-maybe` org-mode hook (MELPA package, android init
   only). Clears a fragment's preview when point enters, re-runs
@@ -159,7 +161,10 @@ code alone.
   to shortcut the manual steps (F-Droid install, permission grants) —
   they can't be automated.
 - **"Change font size."** Edit the `set-face-attribute 'default … :height`
-  line in `android-emacs/init.el`. Previews will follow automatically.
+  line in `android-emacs/init.el` (startup value), or use `C-c e f`
+  (`my/eink-cycle-font-height` in `eink-faces.el`) at runtime. Previews
+  follow automatically; already-rendered AUCTeX overlays need `C-c p c`
+  + re-preview.
 
 ## Things not to do
 

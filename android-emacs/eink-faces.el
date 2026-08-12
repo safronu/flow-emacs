@@ -1,0 +1,148 @@
+;;; eink-faces.el --- Monochrome typographic face signatures for e-ink -*- lexical-binding: t; -*-
+;;
+;; Layered ON TOP of modus-operandi (loaded in init.el before this file):
+;; re-encodes the meaning a color theme carries in hue into channels the
+;; 16-gray Carta panel renders perfectly -- weight, slant, underline,
+;; boxes, inverse video, strike-through -- plus a short ladder of grays
+;; quantized to the panel's 16 native levels (every channel byte is a
+;; multiple of #x11, so nothing dithers):
+;;   #000000 ink | #444444 soft | #777777 mid | #aaaaaa pale | #dddddd wash
+;;
+;; Implementation note: `custom-set-faces' stores these in the `user'
+;; theme, which outranks any enabled custom theme (modus-operandi), and
+;; also applies to faces that are only DEFINED later (diff-mode, org,
+;; dired...) -- no with-eval-after-load needed.
+;;
+;; This file deliberately does NOT touch:
+;;   - the `default' face (init.el owns family and :height 150; preview
+;;     DPI and latex-font-sync both key off it),
+;;   - any font-latex-* face (init.el manages those itself),
+;;   - any minor mode or scroll/refresh setting (init.el owns them).
+;;
+;; No `display-graphic-p' guard on purpose: `custom-set-faces' is
+;; harmless on a tty (unsupported attributes are ignored) and the
+;; C-c e keybindings should exist regardless of display type.
+;;
+;; To remove the whole experiment: delete the load line in init.el.
+
+;;; Code:
+
+(custom-set-faces
+ ;; --- Syntax: typographic signatures instead of hues ---------------
+ ;; In LaTeX buffers these also get their :family remapped to the code
+ ;; font by `my/latex-code-font-apply' -- family and weight/slant are
+ ;; independent channels, so both apply.
+ '(font-lock-keyword-face       ((t (:foreground "#000000" :weight bold))))
+ '(font-lock-type-face          ((t (:foreground "#000000" :weight bold :slant italic))))
+ '(font-lock-function-name-face ((t (:foreground "#000000" :weight ultra-bold))))
+ '(font-lock-function-call-face ((t (:foreground "#000000" :weight semi-bold))))
+ '(font-lock-variable-name-face ((t (:foreground "#000000" :weight medium))))
+ '(font-lock-builtin-face       ((t (:foreground "#000000" :weight semi-bold))))
+ '(font-lock-constant-face      ((t (:foreground "#000000" :underline t))))
+ '(font-lock-string-face        ((t (:foreground "#444444" :slant italic))))
+ '(font-lock-doc-face           ((t (:foreground "#777777" :slant italic))))
+ '(font-lock-comment-face       ((t (:foreground "#777777" :slant italic))))
+ '(font-lock-comment-delimiter-face ((t (:foreground "#aaaaaa" :slant italic))))
+ '(font-lock-warning-face       ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(font-lock-preprocessor-face  ((t (:foreground "#000000" :weight semi-bold :underline t))))
+ '(font-lock-negation-char-face ((t (:foreground "#000000" :weight bold))))
+
+ ;; --- Search & matching: inverse = "here", box = "also here" -------
+ '(isearch        ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(isearch-fail   ((t (:foreground "#000000" :background "#dddddd" :strike-through t))))
+ '(lazy-highlight ((t (:foreground "#000000" :background "#ffffff"
+                       :box (:line-width (1 . -1) :color "#444444")))))
+ '(match          ((t (:foreground "#000000" :background "#dddddd" :weight bold))))
+ '(show-paren-match ((t (:foreground "#000000" :background "#dddddd" :weight ultra-bold))))
+ '(show-paren-mismatch ((t (:foreground "#ffffff" :background "#000000" :weight bold :strike-through t))))
+ '(minibuffer-prompt ((t (:foreground "#000000" :weight bold))))
+
+ ;; --- Mode line: solid black anchor bar ----------------------------
+ '(mode-line          ((t (:foreground "#ffffff" :background "#000000" :weight medium
+                           :box (:line-width (1 . 4) :color "#000000")))))
+ '(mode-line-inactive ((t (:foreground "#777777" :background "#dddddd"
+                           :box (:line-width (1 . 4) :color "#dddddd")))))
+ '(mode-line-buffer-id ((t (:weight ultra-bold))))
+ '(header-line        ((t (:foreground "#000000" :background "#dddddd" :weight medium))))
+
+ ;; --- Diagnostics: severity as loudness, never as hue --------------
+ '(error   ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(warning ((t (:foreground "#000000" :weight bold :box (:line-width (1 . -1) :color "#000000")))))
+ '(success ((t (:foreground "#000000" :weight bold :underline t))))
+ '(compilation-error   ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(compilation-warning ((t (:foreground "#000000" :weight bold :box (:line-width (1 . -1) :color "#000000")))))
+ '(compilation-info    ((t (:foreground "#000000" :weight semi-bold :underline t))))
+ '(flymake-error   ((t (:underline (:style wave :color "#000000")))))
+ '(flymake-warning ((t (:underline (:style wave :color "#444444")))))
+ '(flymake-note    ((t (:underline (:style wave :color "#aaaaaa")))))
+ '(flyspell-incorrect ((t (:underline (:style wave :color "#000000")))))
+ '(flyspell-duplicate ((t (:underline (:style wave :color "#777777")))))
+
+ ;; --- Diffs: + underline / - strike-through ------------------------
+ '(diff-added             ((t (:foreground "#000000" :underline t :weight bold))))
+ '(diff-removed           ((t (:foreground "#444444" :strike-through t))))
+ '(diff-changed           ((t (:foreground "#000000" :slant italic :weight medium))))
+ '(diff-refine-added      ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(diff-refine-removed    ((t (:foreground "#ffffff" :background "#444444" :strike-through t))))
+ '(diff-header            ((t (:foreground "#000000" :background "#dddddd" :weight bold))))
+ '(diff-file-header       ((t (:foreground "#000000" :background "#dddddd" :weight ultra-bold))))
+ '(diff-hunk-header       ((t (:foreground "#444444" :background "#dddddd" :slant italic))))
+ '(diff-context           ((t (:foreground "#444444"))))
+ '(smerge-upper   ((t (:background "#dddddd" :strike-through t :extend t))))
+ '(smerge-lower   ((t (:background "#dddddd" :underline t :extend t))))
+ '(smerge-base    ((t (:background "#dddddd" :slant italic :extend t))))
+ '(smerge-markers ((t (:foreground "#ffffff" :background "#444444" :weight bold :extend t))))
+ '(smerge-refined-added   ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(smerge-refined-removed ((t (:foreground "#ffffff" :background "#444444" :strike-through t))))
+
+ ;; --- Org: structure as size + weight; state as typography ---------
+ '(org-level-1 ((t (:foreground "#000000" :weight ultra-bold :height 1.25 :overline t))))
+ '(org-level-2 ((t (:foreground "#000000" :weight bold :height 1.15))))
+ '(org-level-3 ((t (:foreground "#000000" :weight semi-bold :height 1.05))))
+ '(org-todo    ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(org-done    ((t (:foreground "#777777" :strike-through t :weight regular))))
+ '(org-headline-done ((t (:foreground "#777777"))))
+ '(org-priority ((t (:foreground "#000000" :weight bold :box (:line-width (1 . -1) :color "#444444")))))
+ '(org-tag     ((t (:foreground "#444444" :slant italic :height 0.9))))
+ '(org-date    ((t (:foreground "#444444" :underline t))))
+
+ ;; --- Dired / completions ------------------------------------------
+ '(dired-directory ((t (:foreground "#000000" :weight bold))))
+ '(dired-symlink   ((t (:foreground "#000000" :slant italic :underline t))))
+ '(dired-marked    ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
+ '(dired-flagged   ((t (:foreground "#000000" :strike-through t :weight bold))))
+ '(dired-header    ((t (:foreground "#000000" :weight ultra-bold :underline t))))
+ '(completions-common-part      ((t (:foreground "#000000" :weight bold))))
+ '(completions-first-difference ((t (:foreground "#000000" :weight ultra-bold :underline t)))))
+
+;;; --- Display helpers on the C-c e prefix ----------------------------
+;; NOT on F5/F6/F7 -- those are the Termux-side preview keys.
+
+(defvar my/eink-font-heights '(150 160 180 200)
+  "Cycle of default-face heights (1/10 pt) for `my/eink-cycle-font-height'.
+150 is the init.el baseline; the cycle always returns to it.")
+
+(defun my/eink-cycle-font-height ()
+  "Cycle the default face height through `my/eink-font-heights'.
+Starts from the CURRENT height, so init.el's baseline (150) is the
+normal entry point.  Touches :height only, never :family -- preview
+DPI and latex-font-sync both derive from the default face and follow
+automatically.  Already-rendered preview overlays keep their old pixel
+size; press `C-c p c' then re-preview to regenerate at the new size."
+  (interactive)
+  (let* ((cur  (face-attribute 'default :height))
+         (rest (member cur my/eink-font-heights))
+         (next (if (and rest (cdr rest))
+                   (cadr rest)
+                 (car my/eink-font-heights))))
+    (set-face-attribute 'default nil :height next)
+    (message "Font height: %d (%.0f pt).  Stale previews: C-c p c, then re-preview."
+             next (/ next 10.0))))
+
+(global-set-key (kbd "C-c e f") #'my/eink-cycle-font-height)
+;; Full-frame redraw: clears e-ink ghosting from Emacs's side.  Pair
+;; with the Boox full-refresh gesture for panel-level ghosts.
+(global-set-key (kbd "C-c e g") #'redraw-display)
+
+(provide 'eink-faces)
+;;; eink-faces.el ends here

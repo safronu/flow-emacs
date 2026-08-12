@@ -22,6 +22,10 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 Point inside `$…$`, `\[…\]`, or an env like `equation` — hit `C-c p p`.
 Move point onto an overlay to reveal the source; leave to re-render.
 
+The same `C-c p p` / `C-c p b` / `C-c p c` work in `.org` buffers too
+(`C-c p p` toggles the fragment at point; org's own `C-c C-x C-l` also
+still works).
+
 ## Folding + fonts
 
 `TeX-fold-mode` is on by default and the buffer folds itself on open.
@@ -65,6 +69,18 @@ key first:
 Works from a single window too: `M-o b` splits side-by-side, `M-o v`
 splits top/bottom. The classic `C-x 2/3/0/1` keys still work if you
 ever want them.
+
+## Display (e-ink)
+
+Syntax, diffs, and org states are styled by typography instead of
+color (bold keywords, italic strings, strike-through = removed/DONE,
+inverse black = error/current match) — see
+`android-emacs/eink-faces.el`.
+
+| Keys      | Action                                              |
+| --------- | --------------------------------------------------- |
+| `C-c e f` | Cycle font size 15 → 16 → 18 → 20 pt (previews follow; `C-c p c` clears stale ones) |
+| `C-c e g` | Full redraw — clear e-ink ghosting from Emacs's side |
 
 ## Math snippets (YaSnippet)
 
@@ -117,6 +133,28 @@ fields → `C-c C-c` to replace with a LaTeX matrix.
 | `C-c C-s`  | Insert section                      |
 | `C-c C-f`  | Font: `C-c C-f C-b` bold, `C-i` italic |
 
+## References (RefTeX) + Stacks-style notes
+
+Create a notes project with `notes-init` (Termux). Architecture: one
+small `.tex` file per chapter, each independently compilable; labels are
+`\label{lemma-descriptive-name}`; other chapters reference them as
+`\ref{<chapter>-lemma-descriptive-name}` (see the project's README.md).
+
+| Keys       | Action                                                   |
+| ---------- | -------------------------------------------------------- |
+| `C-c )`    | Insert `\ref` — menu of labels in this chapter           |
+| … then `x` | Switch menu to another chapter (prefix auto-added)       |
+| `C-c &`    | Jump from `\ref` at point to the label's definition      |
+| `C-c (`    | Insert `\label` (auto-prefixed: `lemma-`, `definition-`) |
+| `C-c =`    | Chapter table of contents; `RET` jumps                   |
+
+At the `C-c )` type prompt: `h` theorem, `p` proposition, `l` lemma,
+`c` corollary, `d` definition, `x` example, `X` exercise, `r` remark,
+`s` section, `e` equation. Inside the menu: `TAB` completes by name,
+`RET` inserts, `q` quits. (`C-c &` belongs to RefTeX here — YaSnippet's
+snippet-management prefix on that key is unbound; use
+`M-x yas-insert-snippet` instead.)
+
 ## Calc → LaTeX
 
 `C-S-e` on a line (or region) sends it through Emacs Calc and pastes the
@@ -127,6 +165,7 @@ result as LaTeX (fractions, radians).
 - `~/.emacs.d/init.el` — the config (mirror of Karthik's, tuned for e-ink).
 - `~/.emacs.d/snippets/latex-mode/` — YaSnippet math snippets.
 - `~/latex-scratch/` — scratch `.tex` files.
+- `~/math-notes/` — Stacks-style notes project (create with `notes-init`).
 - Termux TeX Live: `/data/data/com.termux/files/usr/share/texlive/2026`.
 
 ## Troubleshooting
@@ -141,7 +180,9 @@ result as LaTeX (fractions, radians).
 - **`pdflatex: command not found` from Emacs:** relaunch the app — early-init
   puts Termux + TeX Live on `PATH`.
 - **Missing LaTeX package:** `tlmgr install <pkg>` in Termux.
-- **Overlay is fuzzy:** raise the frame default face height in
-  `android-emacs/init.el` (the `set-face-attribute 'default …
-  :height 150` line). Preview DPI is derived from the default face
+- **Overlay is fuzzy:** raise the default face height — `C-c e f`
+  cycles 15/16/18/20 pt at runtime, or edit the `set-face-attribute
+  'default … :height 150` line in `android-emacs/init.el` to change
+  the startup value. Preview DPI is derived from the default face
   height, so bigger buffer text = higher DPI = crisper overlay.
+  After a size change: `C-c p c`, then re-preview.

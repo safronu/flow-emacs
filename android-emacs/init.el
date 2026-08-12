@@ -109,7 +109,13 @@
       scroll-preserve-screen-position t)
 (when (display-graphic-p)
   (load-theme 'modus-operandi t)                 ; pure white background
-  (set-face-attribute 'default nil :height 150)) ; readable on a 13" e-ink panel
+  ;; JetBrains Mono is bundled as a TTF under android-emacs/fonts/ and
+  ;; symlinked into $HOME/fonts by install.sh; Android Emacs enumerates
+  ;; that dir at launch.  `latex-font-sync-mode' still remaps the default
+  ;; family to the document font inside LaTeX buffers.
+  (set-face-attribute 'default nil
+                      :family "JetBrains Mono"   ; monospace for prose+code
+                      :height 150))              ; readable on a 13" e-ink panel
 
 ;; Bring Termux binaries onto exec-path so pdflatex / dvisvgm / gs / tlmgr all
 ;; resolve when Emacs calls them via `call-process' / `start-process'.  These
@@ -385,10 +391,10 @@ environment; otherwise the section."
 ;; sub/super, verbatim, type) are deliberately *not* remapped, so they
 ;; keep inheriting the buffer default (i.e. the document font).
 
-(defvar my/latex-code-font-family "Droid Sans Mono"
+(defvar my/latex-code-font-family "JetBrains Mono"
   "Monospace family used for LaTeX syntactic markup in `LaTeX-mode' buffers.
-Any TTF present under $HOME/fonts/ works; \"Droid Sans Mono\" ships with
-Android and is always available.")
+Any TTF present under $HOME/fonts/ works; \"JetBrains Mono\" is bundled
+in this repo (android-emacs/fonts/) and matches the buffer default face.")
 
 (defconst my/latex-code-font-faces
   '(font-latex-sedate-face             ; { } [ ]
@@ -706,6 +712,24 @@ the document font selected by `latex-font-sync-mode'.")
                     1.0))))
   (advice-add 'org-latex-preview :before #'my/org-latex-auto-scale)
 
+  ;; Mirror the .tex flow's preview keys (see the LaTeX-mode :bind
+  ;; block above) so both modes share muscle memory.  Verified against
+  ;; org 9.7.11: nothing in org-mode-map, org-cdlatex-mode-map, or any
+  ;; other active minor mode binds `C-c p' — the prefix is free.  All
+  ;; three go through `org-latex-preview', so the auto-scale advice
+  ;; applies.  Org's native C-c C-x C-l keeps working unchanged.
+  (defun my/org-preview-buffer ()
+    "Preview all LaTeX fragments in the buffer (like C-c p b in .tex)."
+    (interactive)
+    (org-latex-preview '(16)))
+  (defun my/org-preview-clearout-buffer ()
+    "Clear all LaTeX fragment previews in the buffer (like C-c p c in .tex)."
+    (interactive)
+    (org-latex-preview '(64)))
+  (define-key org-mode-map (kbd "C-c p p") #'org-latex-preview)
+  (define-key org-mode-map (kbd "C-c p b") #'my/org-preview-buffer)
+  (define-key org-mode-map (kbd "C-c p c") #'my/org-preview-clearout-buffer)
+
   ;; Same Android bug as AUCTeX's `preview-get-dpi' (see the preview
   ;; section above), fixed separately for org: the frame reports a bogus
   ;; physical size (~3 m wide), so org's pixels/mm computation in
@@ -758,6 +782,15 @@ the document font selected by `latex-font-sync-mode'.")
     (when (require 'org-fragtog nil 'noerror)
       (org-fragtog-mode 1)))
   :hook (org-mode . my/org-fragtog-maybe))
+
+;;; --- E-ink monochrome face signatures --------------------------------
+;;
+;; Typographic re-encoding of syntax/diff/org meaning for the 16-gray
+;; panel, layered over modus-operandi via the `user' theme.  Loaded
+;; LAST so nothing below it can override its faces.  Same absolute-path
+;; load idiom as latex-font-sync above.  See eink-faces.el header for
+;; what it deliberately leaves alone.
+(load (expand-file-name "eink-faces" user-emacs-directory) nil 'nomessage)
 
 (provide 'init)
 ;;; init.el ends here
