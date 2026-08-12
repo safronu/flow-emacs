@@ -130,7 +130,11 @@ and the app is fully restarted."
   (let* ((family flow-font-family)
          (found  (and family (find-font (font-spec :family family))))
          (fi     (and (display-graphic-p)
-                      (ignore-errors (font-info (face-font 'default))))))
+                      (ignore-errors (font-info (face-font 'default)))))
+         ;; Must be computed HERE, in the buffer being diagnosed —
+         ;; everything it reads is buffer-local or mode-dependent.
+         (chain  (flow-font-report--preview-chain))
+         (line-px (frame-char-height)))
     (with-current-buffer (get-buffer-create "*flow font report*")
       (erase-buffer)
       (insert
@@ -146,8 +150,57 @@ and the app is fully restarted."
        (format "face height now: %s\n" (face-attribute 'default :height))
        (format "actual font:     %s\n" (if fi (aref fi 1) "n/a (no graphic display)"))
        (format "em px / line px: %s / %s\n"
-               (if fi (aref fi 2) "n/a") (frame-char-height)))
+               (if fi (aref fi 2) "n/a") line-px)
+       chain)
       (display-buffer (current-buffer)))))
+
+(defun flow-font-report--preview-chain ()
+  "Report every number the preview/text size sync depends on.
+Empty string outside LaTeX buffers.  The key line is `ratio': the
+preview em divided by the text em — 1.00 means rendered math and
+buffer text are the same size by construction; anything else names
+the broken link (dpi not seeing the remap, scale double-counting,
+text-scale interference, ...)."
+  (if (not (derived-mode-p 'LaTeX-mode))
+      ""
+    (let* ((synced   (bound-and-true-p my/latex-current-family))
+           (factor   (and (fboundp 'flow-preview--optical-factor)
+                          (flow-preview--optical-factor)))
+           (dpi      (and (fboundp 'flow-preview--base-dpi)
+                          (flow-preview--base-dpi)))
+           (scale    (and (boundp 'preview-scale-function)
+                          (functionp preview-scale-function)
+                          (ignore-errors (funcall preview-scale-function))))
+           ;; The font actually drawing buffer text at point.
+           (fat      (and (display-graphic-p)
+                          (ignore-errors (query-font (font-at (point))))))
+           (text-em  (and fat (aref fat 2)))
+           ;; What a 10pt glyph in a rendered preview comes out as.
+           (prev-em  (and dpi scale (/ (* scale dpi 10.0) 72)))
+           ;; An actually-rendered overlay near point, if one exists.
+           (ov-px    (let (found)
+                       (dolist (ov (overlays-in (point-min) (point-max)))
+                         (when-let* ((img (and (not found)
+                                               (overlay-get ov 'preview-image))))
+                           (ignore-errors
+                             (setq found (cdr (image-size (cdr img) t))))))
+                       found)))
+      (concat
+       (format "--- preview sizing chain (this buffer) ---\n")
+       (format "font at point:   %s px=%s\n"
+               (if fat (aref fat 0) "n/a") (or text-em "n/a"))
+       (format "synced family:   %s\n" (or synced "nil (code font, factor applies)"))
+       (format "optical factor:  %s\n" (or factor "n/a"))
+       (format "text-scale amt:  %s\n" (if (bound-and-true-p text-scale-mode)
+                                           text-scale-mode-amount 0))
+       (format "base-dpi:        %s\n" (if dpi (format "%.1f" dpi) "n/a"))
+       (format "preview scale:   %s\n" (if scale (format "%.3f" scale) "n/a"))
+       (format "preview em px:   %s (computed: scale x dpi / 72 x 10pt)\n"
+               (if prev-em (format "%.1f" prev-em) "n/a"))
+       (format "ratio prev/text: %s   <-- 1.00 = in sync\n"
+               (if (and prev-em text-em) (format "%.3f" (/ prev-em text-em)) "n/a"))
+       (format "overlay px h:    %s (an actual rendered image, if any)\n"
+               (or ov-px "none rendered"))))))
 
 (provide 'flow-boot)
 ;;; flow-boot.el ends here
