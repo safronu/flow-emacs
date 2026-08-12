@@ -77,6 +77,11 @@ color (bold keywords, italic strings, strike-through = removed/DONE,
 inverse black = error/current match) — see
 `android-emacs/eink-faces.el`.
 
+In `.tex` buffers: section titles are full-ink and bold,
+`\ref`/`\label`/`\cite` are semi-bold (not underlined), folded macro
+content is black, and a light-gray wash marks any preview/fold
+that is currently open for editing.
+
 | Keys      | Action                                              |
 | --------- | --------------------------------------------------- |
 | `C-c e f` | Cycle font size 15 → 16 → 18 → 20 pt (previews follow; `C-c p c` clears stale ones) |
@@ -160,12 +165,41 @@ snippet-management prefix on that key is unbound; use
 `C-S-e` on a line (or region) sends it through Emacs Calc and pastes the
 result as LaTeX (fractions, radians).
 
+## Deadlines (`C-c d` prefix)
+
+Commitments to external parties, in
+`/data/data/com.termux/files/home/deadlines/deadlines.org` (the Termux home —
+`~` inside the Emacs app is a different directory). `C-c d f` opens it.
+Customers are headlines; their deadlines are the children beneath them.
+
+| Key | Does |
+| --- | --- |
+| `C-c d d` | live agenda — honours each entry's `-Nd` lead time |
+| `C-c d D` | 60-day horizon — ignores `-Nd`, for the weekly review |
+| `C-c d c` | capture into Inbox (text + date only, no customer needed) |
+| `C-c d f` | open `deadlines.org` |
+| `C-c d l` | lint — unassigned, and open >30 days overdue |
+| `C-c d s` | pull, commit, push |
+
+`C-c d d` hiding an entry that `C-c d D` shows is correct, not a bug: `-Nd` on
+a DEADLINE is a per-entry lead time, and a positive global
+`org-deadline-warning-days` cannot widen it — only a negative value overrides
+it, which is what `D` sets.
+
+Saving `deadlines.org` commits locally (no network). `C-c d s` pushes. A GitHub
+Actions job sends the daily Telegram digest at 07:00 MSK; nothing on this
+device has to be running for that (GitHub delays scheduled runs, so it lands
+between 07:00 and roughly 07:20). The whole prefix is absent unless the
+checkout exists — that is by design, see `core/flow-deadlines.el`.
+
 ## Files
 
 - `~/.emacs.d/init.el` — the config (mirror of Karthik's, tuned for e-ink).
 - `~/.emacs.d/snippets/latex-mode/` — YaSnippet math snippets.
 - `~/latex-scratch/` — scratch `.tex` files.
 - `~/math-notes/` — Stacks-style notes project (create with `notes-init`).
+- `/data/data/com.termux/files/home/deadlines/` — the private deadlines repo
+  (`C-c d`), cloned by hand; absent on devices that don't track deadlines.
 - Termux TeX Live: `/data/data/com.termux/files/usr/share/texlive/2026`.
 
 ## Troubleshooting

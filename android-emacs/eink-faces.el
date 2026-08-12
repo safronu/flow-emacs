@@ -16,7 +16,9 @@
 ;; This file deliberately does NOT touch:
 ;;   - the `default' face (init.el owns family and :height 150; preview
 ;;     DPI and latex-font-sync both key off it),
-;;   - any font-latex-* face (init.el manages those itself),
+;;   - any font-latex-* face GLOBALLY (init.el manages those; the
+;;     TeX-specific tweaks at the end of this file are buffer-local
+;;     remaps layered on top),
 ;;   - any minor mode or scroll/refresh setting (init.el owns them).
 ;;
 ;; No `display-graphic-p' guard on purpose: `custom-set-faces' is
@@ -113,7 +115,15 @@
  '(dired-flagged   ((t (:foreground "#000000" :strike-through t :weight bold))))
  '(dired-header    ((t (:foreground "#000000" :weight ultra-bold :underline t))))
  '(completions-common-part      ((t (:foreground "#000000" :weight bold))))
- '(completions-first-difference ((t (:foreground "#000000" :weight ultra-bold :underline t)))))
+ '(completions-first-difference ((t (:foreground "#000000" :weight ultra-bold :underline t))))
+
+ ;; --- AUCTeX chrome not covered by modus (upstream defaults dither) --
+ ;; Folded macro content is real content: full ink, not SlateBlue.
+ '(TeX-fold-folded-face   ((t (:foreground "#000000"))))
+ ;; Revealed-for-editing regions: panel-native wash instead of the
+ ;; upstream lavender (#f2f0fd) / beige backgrounds.
+ '(TeX-fold-unfolded-face ((t (:background "#dddddd"))))
+ '(preview-face           ((t (:background "#dddddd")))))
 
 ;;; --- Display helpers on the C-c e prefix ----------------------------
 ;; NOT on F5/F6/F7 -- those are the Termux-side preview keys.
@@ -143,6 +153,67 @@ size; press `C-c p c' then re-preview to regenerate at the new size."
 ;; Full-frame redraw: clears e-ink ghosting from Emacs's side.  Pair
 ;; with the Boox full-refresh gesture for panel-level ghosts.
 (global-set-key (kbd "C-c e g") #'redraw-display)
+
+;;; --- TeX-mode-specific signatures (buffer-local) ----------------------
+;;
+;; Three fixes for LaTeX buffers, all using only IMAGE-SAFE channels
+;; (foreground/weight/slant style glyphs and add nothing outside a
+;; preview image; underline/box/background are drawn on the glyph cell
+;; and leak under/behind rendered previews -- per the Elisp manual, a
+;; display property leaves undefined attributes to the UNDERLYING
+;; text's face).
+;;
+;; 1. References (\label, \ref, \eqref, \cite -- font-latex's
+;;    "reference" class on `font-lock-constant-face') drop the module's
+;;    global underline signature, which drew a stray line through
+;;    rendered formulas, and become semi-bold instead.
+;;    `face-remap-set-base' REPLACES the face's global spec in this
+;;    buffer -- deterministic, no attribute-merge subtleties -- and
+;;    init.el's :family remap (my/latex-code-font-apply) layers on top.
+;;    `font-lock-preprocessor-face' is the only other globally
+;;    underlined syntax face: same leak class, same fix.
+;; 2. Sectioning: modus dims section titles to its fg-alt gray; remap
+;;    to full ink, with a weight ladder (\part/\chapter/\section
+;;    ultra-bold; deeper levels bold).  NOTE: the bundled document
+;;    TTFs ship a single bold weight, so the whole ladder usually
+;;    renders as plain bold -- the real win is full ink instead of
+;;    dim gray, and the ladder engages for free if a multi-weight
+;;    family is ever installed.  Relative remaps only -- the heights
+;;    that `font-latex-fontify-sectioning' manages are not touched.
+;;    This also makes TeX-folded section titles read as real headings.
+;; 3. Script chars (^ and _) get full ink + bold so super/subscript
+;;    structure is spottable in unrendered math source.
+;;
+;; The defvar-local guard is belt-and-braces idempotence for a
+;; repeated hook invocation in a live buffer.  (A full mode re-init
+;; kills local variables -- flag AND remaps together -- so re-init is
+;; naturally clean either way.)
+
+(defvar-local my/eink-latex-faces--done nil
+  "Non-nil once `my/eink-latex-faces' has run in this buffer.")
+
+(defun my/eink-latex-faces ()
+  "TeX-specific e-ink face signatures, buffer-local and image-safe."
+  (when (and (derived-mode-p 'LaTeX-mode)
+             (display-graphic-p)
+             (not my/eink-latex-faces--done))
+    (setq my/eink-latex-faces--done t)
+    (face-remap-set-base 'font-lock-constant-face
+                         '(:foreground "#000000" :weight semi-bold))
+    (face-remap-set-base 'font-lock-preprocessor-face
+                         '(:foreground "#000000" :weight semi-bold))
+    (dolist (f '(font-latex-sectioning-0-face
+                 font-latex-sectioning-1-face
+                 font-latex-sectioning-2-face))
+      (face-remap-add-relative f :foreground "#000000" :weight 'ultra-bold))
+    (dolist (f '(font-latex-sectioning-3-face
+                 font-latex-sectioning-4-face
+                 font-latex-sectioning-5-face))
+      (face-remap-add-relative f :foreground "#000000" :weight 'bold))
+    (face-remap-add-relative 'font-latex-script-char-face
+                             :foreground "#000000" :weight 'bold)))
+
+(add-hook 'LaTeX-mode-hook #'my/eink-latex-faces)
 
 (provide 'eink-faces)
 ;;; eink-faces.el ends here
