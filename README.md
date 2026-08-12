@@ -182,7 +182,9 @@ source and uses `C-c p p` (preview-latex) for real rasterised previews.
 buffer's `:family` to a TTF matching the document's declared font package
 — `\usepackage{mathpazo}` → TeX Gyre Pagella, `\usepackage{times}` → TeX
 Gyre Termes, `\renewcommand{\rmdefault}{ppl}` → Pagella, and so on. Only
-`:family` is remapped; `:height` stays global so previews keep scaling
+`:family` is remapped along with a relative `:height` factor that
+compensates the serif font's smaller x-height (the global default face
+is untouched), and previews keep scaling
 with the default face. Re-sync fires on file open, on `C-c C-n`
 (`TeX-normal-mode`, which re-parses the preamble), and on save (after
 the AUCTeX auto-parse write hook already ran). Android Emacs's font

@@ -77,8 +77,9 @@
 ;;
 ;; Remaps a LaTeX buffer's default :family to a TTF matching the
 ;; document's declared font package (mathpazo → TeX Gyre Pagella, times →
-;; TeX Gyre Termes, …).  Only :family is remapped; :height stays global,
-;; so previews keep scaling with the default face.
+;; TeX Gyre Termes, …), plus a relative :height factor compensating the
+;; serif font's smaller x-height; the global default face is untouched
+;; and previews keep scaling with the effective buffer font.
 ;;
 ;; Enabled by default here for a second, non-obvious reason: without a
 ;; buffer-local family remap in place, Android's sfnt-android font

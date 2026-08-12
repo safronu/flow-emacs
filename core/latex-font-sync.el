@@ -3,9 +3,10 @@
 ;; When a LaTeX document declares a text-font package (`mathpazo',
 ;; `times', etc.) or a raw NFSS override (`\renewcommand{\rmdefault}{ppl}'),
 ;; remap the buffer's default face family to the matching TrueType font
-;; installed under $HOME/fonts/.  Only affects the current buffer; the
-;; global default face height (set in init.el for preview DPI derivation)
-;; is untouched.
+;; installed under $HOME/fonts/, together with a relative :height factor
+;; that compensates the family's smaller x-height (see
+;; `my/latex-font-optical-scale-alist').  Only affects the current
+;; buffer; the global default face is untouched.
 ;;
 ;; Architecture (v1, pdflatex only):
 ;;   Layer A  package alist          - `my/latex-font-package-alist'
@@ -95,6 +96,25 @@ Applied to arguments of `\\renewcommand{\\rmdefault}{...}' in the preamble.")
 Each list ends in a family guaranteed to exist on the Android Emacs port
 (Noto Serif is present on every Boox), so `my/latex-resolve-family'
 never returns nil for a known key.")
+
+(defconst my/latex-font-optical-scale-alist
+  '((:family/lm-roman . 1.25)
+    (:family/palatino . 1.10)
+    (:family/times    . 1.18)
+    (:family/bookman  . 1.06)
+    (:family/newcent  . 1.08)
+    (:family/chancery . 1.30))
+  "Map intended-family key → :height multiplier for the buffer remap.
+Serif document fonts draw their lowercase far smaller than the code
+font at the same nominal size — Latin Modern's x-height is ~0.43 em,
+JetBrains Mono's ~0.53 em — so a family swap alone makes .tex buffers
+optically SHRINK and strain the eyes.  Each factor is roughly (code
+font x-height) / (family x-height), bringing the document font's
+lowercase up to the size the rest of the editor reads at.
+
+Previews follow automatically: `flow-preview--base-dpi' measures the
+buffer's effective (remapped) font, so the render resolution scales by
+the same factor and formulas keep matching the text around them.")
 
 ;;; --- Layer C: user overrides --------------------------------------------
 
@@ -200,16 +220,22 @@ Nil on a TTY (no font backend) or when no candidate is installed."
 
 (defun my/latex-apply-family ()
   "Compute the desired family for this buffer and apply it if changed.
-Preserves the global default face's `:height' — only `:family' is remapped."
+The global default face is untouched; the remap sets `:family' and a
+RELATIVE `:height' multiplier from `my/latex-font-optical-scale-alist',
+so the document font reads at the same optical size as the code font
+(see that alist's docstring — previews track the change through the
+effective-font DPI)."
   (when (and (derived-mode-p 'LaTeX-mode)
              (display-graphic-p))
     (let* ((intended (my/latex-detect-intended-family))
-           (family   (and intended (my/latex-resolve-family intended))))
+           (family   (and intended (my/latex-resolve-family intended)))
+           (scale    (or (cdr (assq intended my/latex-font-optical-scale-alist))
+                         1.0)))
       (when (and family (not (equal family my/latex-current-family)))
         (when my/latex-face-remap-cookie
           (face-remap-remove-relative my/latex-face-remap-cookie))
         (setq my/latex-face-remap-cookie
-              (face-remap-add-relative 'default :family family)
+              (face-remap-add-relative 'default :family family :height scale)
               my/latex-current-family family)
         ;; Character metrics shifted → existing preview overlays are now
         ;; slightly the wrong pixel size.  Clear them so C-c p p regenerates
