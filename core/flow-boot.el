@@ -92,12 +92,15 @@ awkward to point at.")
   "Non-nil to enable `TeX-fold-mode' in LaTeX buffers and fold on open.")
 
 (defvar flow-preview-scale 1.25
-  "Extra scale factor on rendered math previews, on top of em matching.
-Em-for-em, Computer Modern math looks SMALLER than the buffer text:
-its x-height is ~0.43 em against JetBrains Mono's ~0.53 em, so glyphs
-matched by em come out optically short.  1.25 is the ratio of those
-x-heights — it makes a formula's lowercase match the buffer's
-lowercase.  Applies to both the AUCTeX and org preview pipelines.")
+  "Extra scale on math previews WHEN the buffer shows the code font.
+Em-for-em, Computer Modern math looks SMALLER than monospace text: its
+x-height is ~0.43 em against JetBrains Mono's ~0.53 em.  1.25 is the
+ratio of those x-heights.  It applies only where that mismatch exists:
+org buffers (always mono) and .tex buffers where `latex-font-sync' has
+NOT remapped the buffer to the document font.  In font-synced buffers
+the preview and the buffer share a family, so equal ems are already
+equal optical size and no factor is applied — see
+`flow-preview--optical-factor' in flow-preview.el.")
 
 (defvar flow-aw-leading-char-height 2.0
   "Scale of ace-window's selection letters, relative to the default face.")

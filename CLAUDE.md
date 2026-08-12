@@ -78,10 +78,14 @@ code alone.
   buffer glyph optically, like text and math match in the PDF.
   On top of that, `flow-preview-scale' (default 1.25) compensates for
   math fonts' small x-height (~0.43 em in Computer Modern vs ~0.53 em
-  in JetBrains Mono) in BOTH pipelines — AUCTeX via the
-  `flow-preview-scale' function wrapping `preview-scale-from-face',
-  org via `flow-org-latex-auto-scale'. Change the knob, not the two
-  call sites, or .tex and .org fragments drift apart.
+  in JetBrains Mono) — but ONLY where the buffer actually shows the
+  code font: org buffers always, .tex buffers only when latex-font-sync
+  has not remapped to the document font (`flow-preview--optical-factor';
+  previews are typeset by the document's own preamble, so in a synced
+  buffer preview and text share a family and equal ems are already
+  optically equal — applying the factor there OVERSIZES math, which is
+  a bug we shipped once). Change the knob, not the call sites, or .tex
+  and .org fragments drift apart.
 - Do not restore the built-in `preview-get-dpi` — previews become
   invisible.
 - `org--get-display-dpi` is overridden too (same bogus-mm bug hitting

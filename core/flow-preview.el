@@ -67,11 +67,19 @@ backends where `font-info' returns nil."
   :ensure nil
   :after latex
   :config
+  (defun flow-preview--optical-factor ()
+    "Extra scale needed for previews to LOOK the size of the buffer text.
+Previews are typeset by the document's own preamble, i.e. in the
+document font.  When `latex-font-sync' has remapped the buffer to that
+same font (`my/latex-current-family' non-nil), equal ems ARE equal
+optical size — factor 1.  When the buffer still shows the code font,
+its x-height (~0.53 em for JetBrains Mono) dwarfs the math font's
+(~0.43 em), and `flow-preview-scale' closes that gap."
+    (if (bound-and-true-p my/latex-current-family) 1.0 flow-preview-scale))
+
   (defun flow-preview-scale ()
-    "`preview-scale-from-face', times the `flow-preview-scale' knob.
-The face scale makes one preview em equal one buffer em; the knob then
-compensates for math fonts' small x-height (see its docstring)."
-    (* flow-preview-scale (funcall (preview-scale-from-face))))
+    "`preview-scale-from-face', times the buffer-dependent optical factor."
+    (* (flow-preview--optical-factor) (funcall (preview-scale-from-face))))
 
   (setq preview-image-type 'png
         ;; Face scale = face-pt / doc-pt (e.g. 15pt / 10pt = 1.5).  With
