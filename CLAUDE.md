@@ -174,6 +174,18 @@ code alone.
   SYNTHESIZED (`tools/embolden.py`: union of outline and its 20-unit
   stroke) — those families ship no real demi.
 - `*.ttf` is gitignored — new font files need `git add -f`.
+- **Deploying a new font file to the tablet takes THREE steps**: git
+  pull, `bash install.sh` (creates the symlink — a pull alone updates
+  only existing links' targets), and a FORCE-STOP of the Emacs app
+  (fonts are scanned once per process; android-enumerate-fonts even
+  errors if called twice).  Debug order when a family is missing:
+  count files in /data/data/org.gnu.emacs/files/fonts/ FIRST, theorize
+  never.  A missing-install.sh here once cost a full parser audit.
+- Keep OS/2 usWeightClass at 400 on generated fonts; the grades are
+  separate FAMILIES ("... Book", "... Demi"), so the weight field
+  carries nothing and standard values avoid any driver's weight-name
+  mapping quirks (sfntfont.c keys weights off style-string tokens like
+  "book"/"demibold" — family names are used verbatim).
 - Two traps learned converting: (1) fontTools keeps the source's
   `OTTO` sfnt tag; a glyf font in an OTTO wrapper is rejected before
   any table is read — set `sfntVersion` explicitly (otf2ttf.py does).
