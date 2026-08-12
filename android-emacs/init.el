@@ -98,24 +98,24 @@
 
 (flow-load "latex-font-sync")
 
-;; Prefer the Demi cuts on e-ink: regular LM/TeX Gyre hairlines wash
-;; out on the 16-gray panel, bold is squat — demi is the print-like
-;; middle.  "Latin Modern Roman Demi" is the OFFICIAL LM demi weight
-;; (converted OTF→TTF with tools/otf2ttf.py); the TeX Gyre demis are
-;; synthesized by outline offsetting (tools/embolden.py, +20 units) —
-;; the family has no real demi.  Regular cuts stay as fallbacks for a
-;; repo checkout that predates the demi TTFs.
+;; Weight ladder for e-ink: regular LM/TeX Gyre hairlines wash out on
+;; the 16-gray panel, bold is squat.  Two intermediate grades are
+;; bundled — "Book" (subtle: tools/embolden.py, +12 units LM / +10
+;; TeX Gyre) and "Demi" (dark: LM's OFFICIAL demi converted via
+;; tools/otf2ttf.py; TeX Gyre synthesized at +20).  Book is preferred
+;; after Demi read as too dark in daily use; all grades stay installed,
+;; so comparing is just `M-x my/latex-font-try-family' — no restart.
 (setq my/latex-font-user-candidates
-      '((:family/lm-roman . ("Latin Modern Roman Demi" "Latin Modern Roman"
-                             "Noto Serif" "serif"))
-        (:family/palatino . ("TeX Gyre Pagella Demi" "TeX Gyre Pagella"
-                             "Noto Serif" "serif"))
-        (:family/times    . ("TeX Gyre Termes Demi" "TeX Gyre Termes"
-                             "Noto Serif" "serif"))
-        (:family/bookman  . ("TeX Gyre Bonum Demi" "TeX Gyre Bonum"
-                             "Noto Serif" "serif"))
-        (:family/newcent  . ("TeX Gyre Schola Demi" "TeX Gyre Schola"
-                             "Noto Serif" "serif"))))
+      '((:family/lm-roman . ("Latin Modern Roman Book" "Latin Modern Roman Demi"
+                             "Latin Modern Roman" "Noto Serif" "serif"))
+        (:family/palatino . ("TeX Gyre Pagella Book" "TeX Gyre Pagella Demi"
+                             "TeX Gyre Pagella" "Noto Serif" "serif"))
+        (:family/times    . ("TeX Gyre Termes Book" "TeX Gyre Termes Demi"
+                             "TeX Gyre Termes" "Noto Serif" "serif"))
+        (:family/bookman  . ("TeX Gyre Bonum Book" "TeX Gyre Bonum Demi"
+                             "TeX Gyre Bonum" "Noto Serif" "serif"))
+        (:family/newcent  . ("TeX Gyre Schola Book" "TeX Gyre Schola Demi"
+                             "TeX Gyre Schola" "Noto Serif" "serif"))))
 
 (latex-font-sync-mode 1)
 

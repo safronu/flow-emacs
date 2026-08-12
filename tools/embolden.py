@@ -44,7 +44,7 @@ def rename(font, suffix):
         elif rec.nameID == 3:                     # unique id
             rec.string = (rec.toUnicode() + "-" + suffix)
 
-def main(src, dst, width):
+def main(src, dst, width, suffix="Demi", weight_class=600):
     font = TTFont(src)
     glyf = font["glyf"]
     hmtx = font["hmtx"]
@@ -58,11 +58,12 @@ def main(src, dst, width):
         glyph.recalcBounds(glyf)
         adv, _lsb = hmtx[gname]
         hmtx[gname] = (adv, getattr(glyph, "xMin", 0))
-    rename(font, "Demi")
+    rename(font, suffix)
     if "OS/2" in font:
-        font["OS/2"].usWeightClass = 600
+        font["OS/2"].usWeightClass = weight_class
     font.save(dst)
     print(f"{src} -> {dst}: {done} glyphs emboldened by {width} units")
 
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2], float(sys.argv[3]))
+    main(sys.argv[1], sys.argv[2], float(sys.argv[3]),
+         *( [sys.argv[4], int(sys.argv[5])] if len(sys.argv) > 5 else [] ))
