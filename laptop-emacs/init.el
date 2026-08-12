@@ -65,6 +65,22 @@
 (flow-load "latex-font-sync")
 (latex-font-sync-mode 1)
 
+;;; --- pdf-tools: proper PDF rendering (laptop only) --------------------------
+;;
+;; Vector-sharp at any zoom, fast, SyncTeX-capable — what the C-c p l
+;; live-PDF window uses instead of doc-view once installed.  Needs the
+;; native `epdfinfo' helper, built once against system poppler-glib
+;; (build deps came via apt; the binary lives in the elpa package dir
+;; and survives until a pdf-tools version bump, which will prompt to
+;; rebuild).  `pdf-loader-install' only registers autoloads — nothing
+;; loads until a PDF is actually opened.  Laptop-only: on the tablet
+;; epdfinfo would have to be cross-built under Termux; doc-view (tuned
+;; in flow-live-pdf.el) does that job there.
+
+(use-package pdf-tools
+  :config
+  (pdf-loader-install))
+
 ;;; --- Deadlines (private repo, loaded only if cloned) ------------------------
 
 (flow-load "flow-deadlines")
