@@ -105,6 +105,22 @@ code alone.
   `org-fragtog-ignore-predicates` or `(org-fragtog-mode -1)` there.
   The Termux profile must never load `flow-preview` (no image support).
 
+## Page view
+
+- `flow-page-view-mode` (core/flow-page-view.el) = olivetti margins +
+  `preview-auto-mode` (MELPA, needs AUCTeX >= 14.0.6).  Enabled per
+  profile via the `flow-page-view` knob; `C-c p v` toggles per buffer.
+  Both package installs are offline-guarded like org-fragtog — do not
+  "simplify" the availability checks into bare requires.
+- `flow-latex-sectioning-scale` knob feeds AUCTeX's
+  `font-latex-fontify-sectioning`: laptop 1.2, e-ink stays 1.0 (scaled
+  heading faces repaint badly on the panel).  Script raising stays off
+  everywhere regardless.
+- `C-c p l` (`flow-latex-live-pdf`) shows the real compiled PDF in a
+  side window: `latexmk -pvc` when available, else pdflatex on save;
+  pdf-tools if installed, else built-in doc-view + auto-revert.  The
+  Termux profile loads none of this (no images).
+
 ## Folding + buffer font
 
 - `TeX-fold-mode` is on in every LaTeX buffer, and the buffer auto-folds
