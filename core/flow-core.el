@@ -73,6 +73,15 @@
 (when (package-installed-p 'gnu-elpa-keyring-update)
   (setq package-check-signature 'allow-unsigned))
 
+;; Async native compilation runs in the background over freshly
+;; installed packages and surfaces every byte-compile-grade warning in
+;; a popped-up *Warnings* buffer — e.g. pdf-tools' pdf-annot.el warning
+;; about functions that actually live in pdf-links.el and exist fine at
+;; runtime.  `silent' keeps the full record in *Async-native-compile-log*
+;; without interrupting anything.  Harmless no-op on builds without
+;; native compilation (the variable just sits unused).
+(setq native-comp-async-report-warnings-errors 'silent)
+
 ;;; --- Editing defaults -----------------------------------------------------
 
 (setq inhibit-startup-screen t
