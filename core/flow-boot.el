@@ -115,5 +115,36 @@ the ssh keys live in Termux's home.")
 (defvar flow-org-preview-image-directory nil
   "Directory for org's cached LaTeX-fragment images, or nil for org's default.")
 
+;;; --- Diagnostics ------------------------------------------------------------
+
+(defun flow-font-report ()
+  "Report everything relevant to why the fonts look the way they do.
+First line to check: `user-init-file'.  If it ends in `.elc', Emacs is
+running a stale byte-compiled init and IGNORING init.el — no knob
+change can take effect until the .elc is deleted (re-run install.sh)
+and the app is fully restarted."
+  (interactive)
+  (let* ((family flow-font-family)
+         (found  (and family (find-font (font-spec :family family))))
+         (fi     (and (display-graphic-p)
+                      (ignore-errors (font-info (face-font 'default))))))
+    (with-current-buffer (get-buffer-create "*flow font report*")
+      (erase-buffer)
+      (insert
+       (format "user-init-file:  %s%s\n" user-init-file
+               (if (and (stringp user-init-file)
+                        (string-suffix-p ".elc" user-init-file))
+                   "   <-- STALE BYTE-COMPILED INIT: init.el is being IGNORED"
+                 ""))
+       (format "profile:         %s\n" flow-profile)
+       (format "knob family:     %s\n" family)
+       (format "knob height:     %s\n" flow-font-height)
+       (format "find-font:       %s\n" (or found "NOT FOUND (family would fall back)"))
+       (format "face height now: %s\n" (face-attribute 'default :height))
+       (format "actual font:     %s\n" (if fi (aref fi 1) "n/a (no graphic display)"))
+       (format "em px / line px: %s / %s\n"
+               (if fi (aref fi 2) "n/a") (frame-char-height)))
+      (display-buffer (current-buffer)))))
+
 (provide 'flow-boot)
 ;;; flow-boot.el ends here

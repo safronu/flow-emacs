@@ -152,8 +152,16 @@ chmod +x "${REPO}/bin/"*
 # and removed below if present.
 prune() { [ -L "$1" ] && rm -f "$1" && log "pruned stale link: $1" || true; }
 
+# Byte-compiled init files are POISON at the live locations: `load'
+# prefers init.elc over init.el even when the .el is newer, so one
+# leftover .elc freezes a device's config against every git pull while
+# looking completely healthy.  (An old DEPLOY.md verification step used
+# to create exactly these.)  Remove them unconditionally.
+prune_elc() { [ -f "$1" ] && rm -f "$1" && log "pruned stale byte-compile: $1" || true; }
+
 log "Linking Termux Emacs config"
 link "${REPO}/termux-emacs/init.el" "${HOME_}/.config/emacs/init.el"
+prune_elc "${HOME_}/.config/emacs/init.elc"
 for s in mm dm sr sb ee; do
     prune "${HOME_}/.config/emacs/snippets/latex-mode/$s"
 done
@@ -162,6 +170,8 @@ if [ -d "${ANDROID_EMACS_HOME}" ]; then
     log "Linking Android Emacs config"
     link "${REPO}/android-emacs/early-init.el"        "${ANDROID_EMACS_D}/early-init.el"
     link "${REPO}/android-emacs/init.el"              "${ANDROID_EMACS_D}/init.el"
+    prune_elc "${ANDROID_EMACS_D}/init.elc"
+    prune_elc "${ANDROID_EMACS_D}/early-init.elc"
     prune "${ANDROID_EMACS_D}/latex-font-sync.el"
     prune "${ANDROID_EMACS_D}/eink-faces.el"
     for s in mm dm sr sb ee; do

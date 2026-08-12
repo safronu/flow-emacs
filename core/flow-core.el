@@ -9,6 +9,15 @@
 
 ;;; Code:
 
+;; A stale .elc must never shadow a newer .el.  `load' tries the .elc
+;; FIRST and, with this nil, uses it even when the source is newer —
+;; which is how a byte-compiled init once froze a device's config
+;; against every subsequent `git pull' (see CLAUDE.md, "Things not to
+;; do").  Setting it here cannot protect early-init/init themselves
+;; (they load before this line runs); install.sh prunes those .elc
+;; files instead.  This covers everything loaded afterwards.
+(setq load-prefer-newer t)
+
 (require 'package)
 
 ;;; --- Package system -------------------------------------------------------
@@ -116,15 +125,20 @@
   (load-theme flow-theme t))
 
 (when (display-graphic-p)
-  (let ((attrs (append (when flow-font-family (list :family flow-font-family))
-                       (when flow-font-height (list :height flow-font-height)))))
-    (when attrs
-      ;; Only apply a family that actually exists — a missing family makes
-      ;; Emacs fall back silently to something arbitrary, and on the
-      ;; Android font backend a bad family can take the frame down.
-      (when (or (null flow-font-family)
-                (find-font (font-spec :family flow-font-family)))
-        (apply #'set-face-attribute 'default nil attrs)))))
+  ;; :height and :family are applied INDEPENDENTLY, on purpose.  An
+  ;; earlier version guarded both behind one `find-font' check on the
+  ;; family — but if that lookup fails at init time (conceivable on the
+  ;; sfnt-android backend), the size silently stays at the build's
+  ;; default too, and a profile's `flow-font-height' bump does nothing.
+  ;; The height must never depend on the family resolving.  A family
+  ;; that doesn't resolve is itself harmless — Emacs falls back — and
+  ;; the pre-split configs applied it unconditionally for months; the
+  ;; crash risk on Android is malformed TTF *files* (all bundled ones
+  ;; are validated in-frame), not unknown family names.
+  (when flow-font-height
+    (set-face-attribute 'default nil :height flow-font-height))
+  (when flow-font-family
+    (set-face-attribute 'default nil :family flow-font-family)))
 
 ;;; --- ace-window: manage ALL windows with M-o ------------------------------
 ;;

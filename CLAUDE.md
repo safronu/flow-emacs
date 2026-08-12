@@ -246,3 +246,15 @@ code alone.
   renamed to `flow-emacs`; the directory name on a device is free).
 - Don't put device conditionals inside core modules — add a knob in
   `core/flow-boot.el` and set it from the profiles instead.
+- **Never byte-compile `init.el`/`early-init.el` at their live
+  locations.** `load` tries `.elc` BEFORE `.el` and (with
+  `load-prefer-newer` nil, which is where init loading happens) uses a
+  stale `.elc` even when the source is newer — the device then runs a
+  frozen config and ignores every `git pull`, while looking healthy.
+  This actually happened on the Boox: a `flow-font-height` bump had "no
+  effect" because a `batch-byte-compile` verification step (since
+  removed from DEPLOY.md) had left an `init.elc` behind.  install.sh
+  prunes these; `M-x flow-font-report` (flow-boot) diagnoses it — its
+  `user-init-file` line ends in `.elc` when the trap is live.
+  `flow-core` also sets `load-prefer-newer` t for everything loaded
+  after init.

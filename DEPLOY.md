@@ -149,13 +149,24 @@ test ! -d ~/.emacs.d                                          # MUST NOT exist o
                                                               # (this repo's live location)
 ```
 
-Byte-compile the Emacs configs (should be silent):
+Syntax-check the Emacs configs (should print only OK lines):
 
 ```bash
-emacs -Q --batch -f batch-byte-compile \
-  /data/data/org.gnu.emacs/files/.emacs.d/init.el \
-  /data/data/org.gnu.emacs/files/.emacs.d/early-init.el 2>&1 | grep -iE 'error|multiple'
+for f in /data/data/org.gnu.emacs/files/.emacs.d/init.el \
+         /data/data/org.gnu.emacs/files/.emacs.d/early-init.el; do
+  emacs -Q --batch --eval "(with-temp-buffer (insert-file-contents \"$f\")
+    (condition-case e (progn (goto-char (point-min)) (while t (read (current-buffer))))
+      (end-of-file (princ \"OK $f\\n\"))
+      (error (princ (format \"FAIL $f: %s\\n\" e)))))"
+done
 ```
+
+**Never `batch-byte-compile` the live init files.** It writes `init.elc`
+next to the symlink, and `load` prefers `.elc` over a newer `.el` — the
+device then silently runs the frozen compile forever, ignoring every
+`git pull` (this bit us once; `install.sh` now prunes such `.elc` files).
+Inside Emacs, `M-x flow-font-report` shows whether a stale `.elc` is in
+charge — check its `user-init-file` line.
 
 ## What can't be automated
 
