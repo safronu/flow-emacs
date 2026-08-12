@@ -67,11 +67,18 @@ backends where `font-info' returns nil."
   :ensure nil
   :after latex
   :config
+  (defun flow-preview-scale ()
+    "`preview-scale-from-face', times the `flow-preview-scale' knob.
+The face scale makes one preview em equal one buffer em; the knob then
+compensates for math fonts' small x-height (see its docstring)."
+    (* flow-preview-scale (funcall (preview-scale-from-face))))
+
   (setq preview-image-type 'png
-        ;; Default scale function = face-pt / doc-pt (e.g. 15pt / 10pt = 1.5).
-        ;; With DPI below set to Emacs's actual rendering resolution, this
-        ;; makes one preview em equal one buffer em.
-        preview-scale-function #'preview-scale-from-face
+        ;; Face scale = face-pt / doc-pt (e.g. 15pt / 10pt = 1.5).  With
+        ;; DPI below set to Emacs's actual rendering resolution, that
+        ;; alone makes one preview em equal one buffer em; the flow
+        ;; function multiplies in the x-height compensation.
+        preview-scale-function #'flow-preview-scale
         preview-auto-reveal t)
 
   (defun preview-get-dpi ()
@@ -181,9 +188,12 @@ otherwise the section."
   ;; font size or zoom regenerates images automatically and each rendered
   ;; size stays cached.  There is no size knob — do not add one back.
   (defun flow-org-latex-auto-scale (&rest _)
-    "Set org preview :scale from current font height and text-scale zoom."
+    "Set org preview :scale from font height, text-scale zoom, and
+the `flow-preview-scale' x-height compensation (same factor as the
+AUCTeX pipeline, so fragments match across .tex and .org)."
     (plist-put org-format-latex-options :scale
-               (* (/ (face-attribute 'default :height) 100.0)
+               (* flow-preview-scale
+                  (/ (face-attribute 'default :height) 100.0)
                   (if (bound-and-true-p text-scale-mode)
                       (expt text-scale-mode-step text-scale-mode-amount)
                     1.0))))

@@ -14,7 +14,7 @@
 ;; dired...) -- no with-eval-after-load needed.
 ;;
 ;; This file deliberately does NOT touch:
-;;   - the `default' face (init.el owns family and :height 150; preview
+;;   - the `default' face (the profile owns family and :height; preview
 ;;     DPI and latex-font-sync both key off it),
 ;;   - any font-latex-* face GLOBALLY (init.el manages those; the
 ;;     TeX-specific tweaks at the end of this file are buffer-local
@@ -128,13 +128,14 @@
 ;;; --- Display helpers on the C-c e prefix ----------------------------
 ;; NOT on F5/F6/F7 -- those are the Termux-side preview keys.
 
-(defvar my/eink-font-heights '(150 160 180 200)
+(defvar my/eink-font-heights '(170 185 200 220)
   "Cycle of default-face heights (1/10 pt) for `my/eink-cycle-font-height'.
-150 is the init.el baseline; the cycle always returns to it.")
+170 is the profile baseline (`flow-font-height'); the cycle always
+returns to it.")
 
 (defun my/eink-cycle-font-height ()
   "Cycle the default face height through `my/eink-font-heights'.
-Starts from the CURRENT height, so init.el's baseline (150) is the
+Starts from the CURRENT height, so the profile baseline (170) is the
 normal entry point.  Touches :height only, never :family -- preview
 DPI and latex-font-sync both derive from the default face and follow
 automatically.  Already-rendered preview overlays keep their old pixel

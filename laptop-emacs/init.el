@@ -30,7 +30,7 @@
       ;; skips the family if it is missing rather than falling back to
       ;; something arbitrary.
       flow-font-family "JetBrains Mono"
-      flow-font-height 130
+      flow-font-height 150            ; 15pt — comfortable on the 3200x2000 panel
       flow-code-font-family "JetBrains Mono"
       ;; Colour stays: this is an LCD, so modus-operandi keeps its normal
       ;; syntax colours and eink-faces.el is deliberately not loaded.

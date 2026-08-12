@@ -31,7 +31,7 @@
       ;; symlinked into $HOME/fonts by install.sh; Android Emacs enumerates
       ;; that directory at launch (.ttf/.ttc only — no OTF, no fontconfig).
       flow-font-family "JetBrains Mono"
-      flow-font-height 150            ; readable on a 13" e-ink panel
+      flow-font-height 170            ; 17pt — easy on the eyes on 13" e-ink
       flow-code-font-family "JetBrains Mono"
       flow-theme 'modus-operandi      ; pure white background
       flow-monochrome-latex-faces t   ; hue carries nothing on 16 grays

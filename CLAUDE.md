@@ -76,6 +76,12 @@ code alone.
   came out exactly that much bigger than the surrounding text until
   it was fixed. The em is what makes a 10pt formula glyph match a
   buffer glyph optically, like text and math match in the PDF.
+  On top of that, `flow-preview-scale' (default 1.25) compensates for
+  math fonts' small x-height (~0.43 em in Computer Modern vs ~0.53 em
+  in JetBrains Mono) in BOTH pipelines — AUCTeX via the
+  `flow-preview-scale' function wrapping `preview-scale-from-face',
+  org via `flow-org-latex-auto-scale'. Change the knob, not the two
+  call sites, or .tex and .org fragments drift apart.
 - Do not restore the built-in `preview-get-dpi` — previews become
   invisible.
 - `org--get-display-dpi` is overridden too (same bogus-mm bug hitting
