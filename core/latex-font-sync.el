@@ -288,18 +288,35 @@ effective-font DPI)."
 
 (defun my/latex-font-try-family (family)
   "Prompt for a FAMILY string and remap this buffer's :family to it.
-Use this to test one candidate at a time on device before flipping
-`latex-font-sync-mode' on globally."
-  (interactive (list (completing-read
-                      "Family: "
-                      (delete-dups
-                       (apply #'append (mapcar #'cdr my/latex-font-candidate-alist))))))
-  (when my/latex-face-remap-cookie
-    (face-remap-remove-relative my/latex-face-remap-cookie))
-  (setq my/latex-face-remap-cookie
-        (face-remap-add-relative 'default :family family)
-        my/latex-current-family family)
-  (message "Applied :family = %s" family))
+Use this to test one candidate at a time on device — e.g. comparing
+the bundled weight grades (Book / Demi / regular) live.
+
+Completion offers every family the display actually has
+(`font-family-list'), plus all configured candidates (user overrides
+included); free typing is allowed for names not yet installed.
+
+The remap keeps the same :height factor `my/latex-apply-family' would
+use (optical scale x `flow-font-sync-extra-scale'), so grades are
+compared at identical size — a bare :family swap would also silently
+shrink the text back to code-font proportions."
+  (interactive
+   (list (completing-read
+          "Family: "
+          (delete-dups
+           (append
+            (apply #'append (mapcar #'cdr my/latex-font-user-candidates))
+            (apply #'append (mapcar #'cdr my/latex-font-candidate-alist))
+            (and (display-graphic-p) (font-family-list)))))))
+  (let* ((intended (my/latex-detect-intended-family))
+         (scale (* (or (cdr (assq intended my/latex-font-optical-scale-alist))
+                       1.0)
+                   (or (bound-and-true-p flow-font-sync-extra-scale) 1.0))))
+    (when my/latex-face-remap-cookie
+      (face-remap-remove-relative my/latex-face-remap-cookie))
+    (setq my/latex-face-remap-cookie
+          (face-remap-add-relative 'default :family family :height scale)
+          my/latex-current-family family)
+    (message "Applied :family = %s (:height x%.2f)" family scale)))
 
 (defun my/latex-font-sync--install-save-hook ()
   "Add `my/latex-apply-family' to buffer-local `after-save-hook'.
