@@ -1,0 +1,56 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# notes-init — create a Stacks-style math-notes project from notes-template/.
+#
+#   notes-init              → creates ~/math-notes
+#   notes-init ~/algebra    → creates ~/algebra
+#
+# The new project is a COPY of the template, not a symlink into the repo:
+# notes are user content, not configuration.  (This is a deliberate
+# exception to the repo's everything-is-a-symlink convention.)
+set -euo pipefail
+
+SELF="$(readlink -f "$0")"   # resolve the ~/.local/bin symlink back to the repo
+REPO="$(cd "$(dirname "${SELF}")/.." && pwd)"
+TEMPLATE="${REPO}/notes-template"
+TARGET="${1:-${HOME}/math-notes}"
+
+if [ -e "${TARGET}" ]; then
+    echo "notes-init: ${TARGET} already exists — refusing to overwrite" >&2
+    exit 1
+fi
+
+mkdir -p "${TARGET}"
+# Absolutize: `notes-init algebra' must not produce a dangling RELATIVE
+# symlink in the Android Emacs home below.
+TARGET="$(cd "${TARGET}" && pwd)"
+cp "${TEMPLATE}/preamble.tex"         "${TARGET}/"
+cp "${TEMPLATE}/chapter-template.tex" "${TARGET}/"
+cp "${TEMPLATE}/build.sh"             "${TARGET}/"
+cp "${TEMPLATE}/README.md"            "${TARGET}/"
+chmod +x "${TARGET}/build.sh"
+
+# Reachable from the Android Emacs app's C-x C-f (same pattern install.sh
+# uses for ~/latex-scratch).  Only create/replace the link if the target
+# name is free or already a symlink — never drop a link INSIDE an existing
+# real directory (ln -sfn would do that silently).
+ANDROID_EMACS_HOME="/data/data/org.gnu.emacs/files"
+AE_LINK="${ANDROID_EMACS_HOME}/$(basename "${TARGET}")"
+if [ -d "${ANDROID_EMACS_HOME}" ]; then
+    if [ -L "${AE_LINK}" ] || [ ! -e "${AE_LINK}" ]; then
+        ln -sfn "${TARGET}" "${AE_LINK}"
+    else
+        echo "notes-init: ${AE_LINK} exists and is not a symlink — skipped;" >&2
+        echo "notes-init: reach the project via termux-home/ in the Emacs app" >&2
+    fi
+fi
+
+cat <<EOF
+Created ${TARGET}.
+
+Next steps:
+  1. cp ${TARGET}/chapter-template.tex ${TARGET}/<name>.tex
+  2. Add \externaldocument[<name>-]{<name>} to ${TARGET}/preamble.tex
+  3. Edit in Emacs; build with:  cd ${TARGET} && ./build.sh
+
+Conventions and keys: ${TARGET}/README.md
+EOF

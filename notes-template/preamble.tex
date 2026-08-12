@@ -1,0 +1,49 @@
+% preamble.tex — shared preamble for every chapter (Stacks-project style).
+% Each chapter file starts with \input{preamble} and is a complete,
+% independently compilable document.
+
+\documentclass[a4paper,11pt]{amsart}
+
+\usepackage{amsmath,amssymb,mathtools}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+
+% Cross-chapter references.  `xr' (v6+, which absorbed the old xr-hyper)
+% reads the referenced chapter's .aux file at \externaldocument time.  A
+% missing .aux is only a warning ("No file ... LABELS NOT IMPORTED") —
+% the chapter still compiles; the refs fill in once the other chapter
+% has been built.
+\usepackage{xr}
+
+% Clickable references in the output PDF.  All links black on purpose:
+% colored links render as washed-out gray on the e-ink panel.
+\usepackage[colorlinks=true,allcolors=black]{hyperref}
+
+% One \externaldocument line per chapter; the prefix is the chapter file
+% name plus "-".  From any OTHER chapter you then write
+% \ref{<chapter>-<label>}.  Add a line here each time you create a
+% chapter.  RULE: never give a chapter a name that is a prefix of
+% another chapter's name (e.g. `groups' and `groups-extra') — RefTeX
+% resolves external labels by prefix matching and would pick the wrong
+% file.
+%\externaldocument[example-]{example}
+
+% Theorem environments: one shared counter, numbered within sections.
+% amsart already includes the amsthm code — do NOT \usepackage{amsthm}.
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{exercise}[theorem]{Exercise}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\numberwithin{equation}{section}
+
+%%% Local Variables:
+%%% TeX-master: t
+%%% End:
