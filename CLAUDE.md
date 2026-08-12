@@ -68,8 +68,14 @@ code alone.
   Android frame reports a bogus physical size (~3 meters wide), which
   makes the built-in DPI computation return ~9; the laptop's X session
   reports a 96-DPI-derived size that is ~2x off. We derive DPI from
-  `frame-char-height` and the current default-face height, and multiply
-  by `text-scale-mode-amount` so `C-x C-+/-` also resizes previews.
+  the default font's **em size** (`font-info` pixel size against the
+  face point size — `flow-preview--base-dpi`), and multiply by
+  `text-scale-mode-amount` so `C-x C-+/-` also resizes previews.
+  NOT from `frame-char-height`: that is the LINE height (ascent +
+  descent + leading), 1.34x the em for JetBrains Mono, and previews
+  came out exactly that much bigger than the surrounding text until
+  it was fixed. The em is what makes a 10pt formula glyph match a
+  buffer glyph optically, like text and math match in the PDF.
 - Do not restore the built-in `preview-get-dpi` — previews become
   invisible.
 - `org--get-display-dpi` is overridden too (same bogus-mm bug hitting

@@ -18,15 +18,36 @@
 ;;   * X (and XWayland) report a screen size derived from a hardcoded
 ;;     96 DPI — on the laptop's 3200x2000 panel that is off by ~2x, so
 ;;     previews come out at half the size of the text around them.
-;; Character metrics don't lie: `frame-char-height' pixels for a face of
-;; `face-pt' points is exactly the resolution Emacs is rendering at.  That
-;; is what both overrides below use, which also makes previews track the
-;; default-face height and `text-scale-adjust' automatically.
+;; Font metrics don't lie — but the RIGHT metric is the em, not the
+;; line.  A font opened at `face-pt' points has an em of exactly
+;; face-pt/72 inch, and `font-info' reports the real pixel size that em
+;; came out at, scaling included.  Deriving DPI from that makes a 10pt
+;; glyph in a rendered formula the same optical size as a glyph of the
+;; buffer text around it — which is how the compiled PDF looks, where
+;; text and math share the point size.  The earlier derivation here
+;; used `frame-char-height', which is the LINE height (ascent + descent
+;; + leading): with JetBrains Mono that is 1.34x the em, and previews
+;; came out exactly that much oversized on every device.  The line
+;; height remains the fallback where `font-info' is unavailable.
+;; This also makes previews track the default-face height and
+;; `text-scale-adjust' automatically.
 ;; Do not restore either built-in.  They are two functions on purpose —
 ;; `preview-get-dpi' returns a CONS, `org--get-display-dpi' a NUMBER, and
 ;; they serve different callers.  Do not merge or "deduplicate" them.
 
 ;;; Code:
+
+(defun flow-preview--base-dpi ()
+  "Emacs's rendering DPI, derived from the default font's em size.
+Uses the buffer's effective default font, so a `latex-font-sync'
+remap (serif document font) is measured as displayed.  Falls back to
+`frame-char-height' (the line height — slightly too large) on
+backends where `font-info' returns nil."
+  (let* ((face-pt (/ (face-attribute 'default :height) 10.0))
+         (em-px   (or (ignore-errors
+                        (aref (font-info (face-font 'default)) 2))
+                      (frame-char-height))))
+    (/ (* em-px 72.0) face-pt)))
 
 ;;; --- AUCTeX preview-latex -------------------------------------------------
 ;;
@@ -54,16 +75,14 @@
         preview-auto-reveal t)
 
   (defun preview-get-dpi ()
-    "Emacs's real rendering resolution, derived from character metrics.
+    "Emacs's real rendering resolution, from the default font's em size.
 Scaled by the buffer's `text-scale-mode-amount' so C-x C-+ / C-x C--
 resize previews along with the text."
-    (let* ((face-pt   (/ (face-attribute 'default :height) 10.0))
-           (char-px   (float (frame-char-height)))
-           (base-dpi  (/ (* char-px 72.0) face-pt))
-           (zoom      (if (bound-and-true-p text-scale-mode)
-                          (expt text-scale-mode-step text-scale-mode-amount)
-                        1.0))
-           (dpi       (* base-dpi zoom)))
+    (let* ((base-dpi (flow-preview--base-dpi))
+           (zoom     (if (bound-and-true-p text-scale-mode)
+                         (expt text-scale-mode-step text-scale-mode-amount)
+                       1.0))
+           (dpi      (* base-dpi zoom)))
       (cons dpi dpi)))
 
   ;; When the buffer's text-scale changes, existing overlays keep their old
@@ -188,9 +207,8 @@ otherwise the section."
   ;; (`org-preview-latex-image-directory', typically .../ltximg).
   ;; :scale changes need no such step — they re-key the cache.
   (defun org--get-display-dpi ()
-    "Derive DPI from character metrics; the reported monitor size is wrong."
-    (round (/ (* (frame-char-height) 72.0)
-              (/ (face-attribute 'default :height) 10.0)))))
+    "Derive DPI from the default font's em size; the reported monitor size lies."
+    (round (flow-preview--base-dpi))))
 
 ;;; --- org-fragtog: auto-toggle previews at point ---------------------------
 ;;

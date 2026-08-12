@@ -48,18 +48,35 @@
         doc-view-scale-internally t))
 
 (defun flow--live-pdf-tune-docview (buf window)
-  "In doc-view BUF, fit the page bitmap to WINDOW's width, keep it fitted."
+  "In doc-view BUF, make the page exactly fill WINDOW's width.
+Two strategies, picked by what the display backend can do:
+
+- With image scaling (laptop: X reports `scale' in `image-transforms-p'):
+  keep the sharp 2x render and let doc-view downscale it to the window.
+- Without scaling (the Android port has none): a big bitmap displays
+  1:1 and forces horizontal scrolling, so instead RENDER at the
+  resolution where a US-letter page width equals the window width —
+  1:1 then fits by construction, at exactly the window's own pixel
+  density (all a scaling-less display could show anyway)."
   (with-current-buffer buf
     (when (derived-mode-p 'doc-view-mode)
-      ;; Display width = the window it lives in, so the 2x render is
-      ;; downscaled to exactly fit — sharp and fully visible.
-      (setq-local doc-view-image-width (max 400 (window-body-width window t)))
-      ;; auto-revert re-runs conversion on each rebuild; the buffer-local
-      ;; width survives, so nothing else is needed to stay fitted.  The
-      ;; fit command errors if the first page conversion hasn't finished
-      ;; yet — harmless then, since the width above already applies to
-      ;; the image once it appears.
-      (ignore-errors (doc-view-fit-width-to-window)))))
+      (if (memq 'scale (image-transforms-p))
+          (progn
+            ;; Display width = the window it lives in, so the 2x render
+            ;; is downscaled to exactly fit — sharp and fully visible.
+            (setq-local doc-view-image-width
+                        (max 400 (window-body-width window t)))
+            ;; auto-revert re-runs conversion on each rebuild; the
+            ;; buffer-local width survives, so nothing else is needed to
+            ;; stay fitted.  The fit command errors if the first page
+            ;; conversion hasn't finished yet — harmless then, since the
+            ;; width above already applies once the image appears.
+            (ignore-errors (doc-view-fit-width-to-window)))
+        ;; 8.5in = US letter width; A4 (8.27in) comes out a hair
+        ;; narrower than the window, which errs on the fitting side.
+        (setq-local doc-view-resolution
+                    (max 72 (round (/ (window-body-width window t) 8.5))))
+        (ignore-errors (doc-view-reconvert-doc))))))
 
 (defvar-local flow--live-pdf-proc nil
   "The latexmk -pvc process watching this buffer's master, if any.")
