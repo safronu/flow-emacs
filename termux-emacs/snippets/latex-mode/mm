@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: mm — inline math ($ ... $)
-# key: mm
-# condition: t
-# type: snippet
-# --
-\$$1\$$0

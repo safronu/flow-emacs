@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: sr — auto: superscript
-# key: sr
-# condition: (and (texmathp) 'auto)
-# type: snippet
-# --
-^{$1}$0

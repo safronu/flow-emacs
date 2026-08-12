@@ -1,11 +1,41 @@
-# boox-latex-setup
+# flow-emacs
 
-LaTeX authoring environment for the **Onyx Boox Note Max** (13" Android 13
-e-ink tablet), built as a portable adaptation of Karthik Chikmagalur's
-["LaTeX Input for Impatient Scholars"][karthink] — fast math snippets, live
-inline previews, minimal typing.
+One Emacs configuration for two machines — the **Onyx Boox Note Max**
+(13" Android 13 e-ink tablet, both its native Emacs app and Termux) and
+an **Ubuntu laptop** (Xiaomi 15.6", 3200x2000).  The heart of it is a
+portable adaptation of Karthik Chikmagalur's ["LaTeX Input for Impatient
+Scholars"][karthink] — fast math snippets, live inline previews, minimal
+typing.
 
 [karthink]: https://karthinks.com/software/latex-input-for-impatient-scholars/
+
+## How the sharing works
+
+Everything device-independent lives in `core/` as `flow-*` modules.
+Each device has a small **profile** directory holding only its entry
+point (`init.el`, sometimes `early-init.el`) plus anything true of that
+machine alone.  The live init path on every device is a **symlink** to
+its profile's init.el; the init resolves that symlink (`file-truename`)
+to find the repo, so core modules, snippets and the rest load straight
+from the working tree — `git pull` is a complete update, and no new
+symlinks are ever needed when a module is added.
+
+A profile declares what its device *is* (knobs defined in
+`core/flow-boot.el`: e-ink or LCD, fonts, theme, folding, where the
+private deadlines checkout lives) and the core modules read those knobs
+instead of sniffing the machine.
+
+| | android profile | termux profile | laptop profile |
+| --- | --- | --- | --- |
+| display | e-ink, images OK | e-ink, **no images** | colour LCD |
+| previews | inline overlays (`C-c p p`) | external viewer (`<f5>`) | inline overlays (`C-c p p`) |
+| theme | modus-operandi + eink-faces | terminal's own | modus-operandi, colour |
+| math folding | on | off (prettify-symbols instead) | on |
+| doc-font sync | on (bundled TTFs) | off (tty) | on (system TeX Gyre fonts) |
+
+The private `deadlines` repo (customer data — never vendored here) is
+loaded if its checkout exists at the profile's declared path, silently
+skipped otherwise; see `core/flow-deadlines.el`.
 
 ## What this gives you
 
@@ -24,48 +54,64 @@ inline previews, minimal typing.
 ## Repository layout
 
 ```
-boox-latex-setup/
+flow-emacs/
 ├── README.md                       This file — architecture & rationale
 ├── DEPLOY.md                       Step-by-step install on a fresh Boox
 ├── CLAUDE.md                       Context primer for Claude Code sessions
-├── install.sh                      Idempotent deploy script
+├── install.sh                      Idempotent deploy script (Boox/Termux)
+├── install-laptop.sh               Idempotent deploy script (laptop)
 │
-├── android-emacs/                  Native Android Emacs (org.gnu.emacs)
-│   ├── early-init.el               PATH, TEXMFROOT, package-quickstart
-│   ├── init.el                     AUCTeX + preview-latex + cdlatex + yas
+├── core/                           Shared, device-independent modules
+│   ├── flow-boot.el                Repo locator + device-knob declarations
+│   ├── flow-core.el                Package system, defaults, M-o windows
+│   ├── flow-latex.el               AUCTeX, RefTeX, cdlatex, yas, folding
+│   ├── flow-preview.el             Inline previews (.tex + .org) — GUI only
+│   ├── flow-deadlines.el           Guarded loader for the private repo
 │   ├── latex-font-sync.el          Buffer :family follows LaTeX font package
 │   ├── latex-font-sync-tests.el    ERT tests for the above
-│   ├── eink-faces.el               Monochrome typographic face signatures
-│   ├── fonts/                      TTF conversions of TeX Gyre + Latin Modern
-│   └── snippets/latex-mode/        mm, dm, sr, sb, ee
+│   └── snippets/latex-mode/        mm, dm, sr, sb, ee — one copy for all
 │
-├── termux-emacs/                   Terminal Emacs (no image support)
-│   ├── init.el                     External-viewer preview flow
-│   └── snippets/latex-mode/
+├── android-emacs/                  Profile: native Android Emacs (org.gnu.emacs)
+│   ├── early-init.el               PATH, TEXMFROOT, package-quickstart
+│   ├── init.el                     Knobs + Termux PATH + module loads
+│   ├── eink-faces.el               Monochrome typographic face signatures
+│   └── fonts/                      TTF conversions of TeX Gyre + Latin Modern
+│
+├── termux-emacs/                   Profile: terminal Emacs (no image support)
+│   └── init.el                     Knobs + external-viewer preview flow
+│
+├── laptop-emacs/                   Profile: Ubuntu laptop (snap Emacs 30)
+│   ├── early-init.el               package-quickstart, signature bootstrap
+│   └── init.el                     Knobs + module loads (colour, no eink)
 │
 ├── termux/                         Termux shell / installer files
 │   ├── bashrc                      PATH, texlive.sh sourcing, aliases
 │   └── texlive-basic.profile       install-tl profile (scheme-infraonly)
 │
-├── bin/                            Helper scripts on $PATH
+├── bin/                            Helper scripts on $PATH (Termux)
 │   ├── latex-scratch               Scratch .tex file + open in Emacs
-│   ├── latex-preview-server        HTTP preview server (Python)
-│   └── notes-init                  Scaffold a Stacks-style notes project
-│
-├── notes-template/                 Template for math-notes projects
-│   ├── preamble.tex                Shared preamble (amsart, xr, hyperref)
-│   ├── chapter-template.tex        Copy to <name>.tex per chapter
-│   ├── build.sh                    Incremental two-pass chapter builds
-│   └── README.md                   Label/reference conventions
+│   └── latex-preview-server        HTTP preview server (Python)
 │
 └── scratch/                        Playground
     ├── CHEATSHEET.md               One-page keys reference
     └── test.tex                    Sanity test file with math
 ```
 
-Every path under `~/` on the tablet that used to hold a config file is now
-a **symlink into this repo**. Editing a file in this repo takes effect the
-next time the relevant program is launched.
+On every device the live init path is a **symlink into this repo**, and
+only the entry points are linked — everything else loads from the
+working tree through that symlink. Editing a file in the repo takes
+effect the next time the relevant program is launched.
+
+## Laptop notes
+
+The laptop panel is 3200x2000 at ~239 physical DPI, but X/XWayland
+reports a screen size back-derived from 96 DPI — the same *class* of lie
+the Android port tells (see "Bogus monitor size" below), just a
+different multiple. The char-metric DPI overrides in
+`core/flow-preview.el` cover both, which is why they live in core and
+not in an Android profile. Deploy with `bash install-laptop.sh`
+(apt-installs TeX Live recommended+extra, preview-latex's style,
+JetBrains Mono, then symlinks `~/.emacs.d/{init,early-init}.el`).
 
 ## Why the pieces are shaped this way
 
@@ -153,7 +199,9 @@ See [`DEPLOY.md`](./DEPLOY.md). The short version:
 
 1. Install Termux and the Android Emacs port **both from the
    [SourceForge project][port]** so they share signing key (and thus UID).
-2. Clone this repo to `~/boox-latex-setup/`.
+2. Clone this repo on the tablet (any directory name works — the
+   config finds the repo through its own symlinks; the existing install
+   uses `~/boox-latex-setup/`).
 3. `bash install.sh` — installs packages, symlinks configs, sets up TeX Live.
 4. Do the manual steps listed in `DEPLOY.md` (grant storage, launch Emacs
    once, etc.).
@@ -179,8 +227,8 @@ short:
 | ------- | ------- |
 | `pdflatex.fmt` not found | `TEXMFROOT` env in `android-emacs/early-init.el` |
 | dvisvgm rejects PDF | `pkg install mupdf-tools` (Termux gs ≥10.01 needs mutool) |
-| Overlay disappears / invisible | `preview-get-dpi` override in `android-emacs/init.el` |
-| Org `C-c C-x C-l` fragment shrinks to a smudge (or `ulem.sty` not found) | `org--get-display-dpi` override in `android-emacs/init.el` — same bogus-DPI bug, separate fix. After changing DPI, delete the stale cache: `rm -rf /data/data/org.gnu.emacs/files/ltximg`. `ulem` is in install.sh's tlmgr list. |
+| Overlay disappears / invisible | `preview-get-dpi` override in `core/flow-preview.el` |
+| Org `C-c C-x C-l` fragment shrinks to a smudge (or `ulem.sty` not found) | `org--get-display-dpi` override in `core/flow-preview.el` — same bogus-DPI bug, separate fix. After changing DPI, delete the stale cache: `rm -rf /data/data/org.gnu.emacs/files/ltximg`. `ulem` is in install.sh's tlmgr list. |
 | Startup hangs at "Connecting to melpa" | `package-refresh-contents` is now first-run only |
 | Signature verify fails | `package-check-signature nil` in `early-init.el` |
 | Buffer font didn't change after adding `\usepackage{mathpazo}` | `M-x my/latex-font-explain` — check "Resolved" line; if nil, the TTF isn't installed (restart Emacs after `install.sh`) |

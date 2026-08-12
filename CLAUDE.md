@@ -4,9 +4,30 @@ Read this before helping the user with anything in this repo. It captures
 non-obvious constraints of the environment that aren't visible from the
 code alone.
 
+## Architecture (read this first)
+
+- **Three profiles, one core.** `core/` holds the shared `flow-*`
+  modules; `android-emacs/`, `termux-emacs/`, `laptop-emacs/` are thin
+  profiles that set the knobs declared in `core/flow-boot.el` and load
+  modules with `flow-load`. Modules never sniff the machine — if
+  behaviour must differ per device, add a knob in flow-boot and branch
+  on it.
+- **Only entry points are symlinked** into the live init paths. Each
+  init.el finds the repo via `file-truename` of its own symlink
+  (`flow-root`), so core modules and `core/snippets/` load straight
+  from the working tree. Adding a core module needs no install step.
+- The private `deadlines` repo (customer data) is loaded by
+  `core/flow-deadlines.el` only if the checkout exists at the
+  profile's declared path. Never vendor it here — this repo is
+  publishable.
+
 ## Environment
 
-- **Device:** Onyx Boox Note Max — 13" Android 13 e-ink tablet.
+- **Devices:** Onyx Boox Note Max — 13" Android 13 e-ink tablet (the
+  next sections) — and a Xiaomi 15.6" Ubuntu 22.04 laptop (snap Emacs
+  30, X build under XWayland; 3200x2000 panel whose X session reports
+  96 DPI while really rendering near 2x that — same class of DPI lie
+  as Android, handled by the same overrides in `core/flow-preview.el`).
 - **Termux:** package name `com.termux`, standard `$PREFIX =
   /data/data/com.termux/files/usr`, home
   `/data/data/com.termux/files/home`.
@@ -43,15 +64,16 @@ code alone.
 
 ## Preview sizing
 
-- `preview-get-dpi` is **overridden** in `android-emacs/init.el`. The
+- `preview-get-dpi` is **overridden** in `core/flow-preview.el`. The
   Android frame reports a bogus physical size (~3 meters wide), which
-  makes the built-in DPI computation return ~9. We derive DPI from
+  makes the built-in DPI computation return ~9; the laptop's X session
+  reports a 96-DPI-derived size that is ~2x off. We derive DPI from
   `frame-char-height` and the current default-face height, and multiply
   by `text-scale-mode-amount` so `C-x C-+/-` also resizes previews.
 - Do not restore the built-in `preview-get-dpi` — previews become
   invisible.
 - `org--get-display-dpi` is overridden too (same bogus-mm bug hitting
-  org's separate preview pipeline; also in `android-emacs/init.el`).
+  org's separate preview pipeline; also in `core/flow-preview.el`).
   It returns a plain NUMBER while `preview-get-dpi` returns a CONS —
   they serve different callers and are separate on purpose. Do not
   merge or "deduplicate" them, and do not restore either built-in.
@@ -61,7 +83,7 @@ code alone.
   tight `standalone`-class snippet header (org's stock header is a full
   article page and gs cannot crop), transparent via pngalpha with
   `:background "Transparent"`, same resolution equation as AUCTeX
-  preview. Sizing is fully automatic: `my/org-latex-auto-scale`
+  preview. Sizing is fully automatic: `flow-org-latex-auto-scale`
   (advised before `org-latex-preview`) recomputes `:scale` =
   face-pt/10 × text-scale zoom on every render; `:scale` sits in the
   cache key, so font/zoom changes regenerate images with no cache
@@ -69,8 +91,9 @@ code alone.
   mirror the .tex preview keys in org buffers (bound in `org-mode-map`;
   org's `C-c C-x C-l` untouched).
 - Org preview auto-toggle: `org-fragtog-mode`, enabled via the guarded
-  `my/org-fragtog-maybe` org-mode hook (MELPA package, android init
-  only). Clears a fragment's preview when point enters, re-runs
+  `flow-org-fragtog-maybe` org-mode hook (MELPA package, in
+  `core/flow-preview.el`, so android + laptop; Termux never loads that
+  module). Clears a fragment's preview when point enters, re-runs
   `org-latex-preview` on exit — org's analogue of AUCTeX auto-reveal.
   It uses the normal `org-latex-preview` entry point, so whatever
   sizing setup is active applies. First render of a fragment is a
@@ -80,7 +103,7 @@ code alone.
   hook. If a future org-buffer type (e.g. an LLM chat) suffers from
   cursor-motion compiles or `$5`-style false math, scope it down with
   `org-fragtog-ignore-predicates` or `(org-fragtog-mode -1)` there.
-  Do not replicate any of this in the Termux init (no image support).
+  The Termux profile must never load `flow-preview` (no image support).
 
 ## Folding + buffer font
 
@@ -96,22 +119,23 @@ code alone.
   watches the `invisible` property.  The `(add-hook 'LaTeX-mode-hook
   #'reveal-mode)` line is essentially a no-op for folds; keep or delete
   as you like.
-- `latex-font-sync-mode` is ON by default (enabled in `init.el`).  It
+- `latex-font-sync-mode` is ON in the android and laptop profiles
+  (enabled in each profile's init.el; `core/latex-font-sync.el`).  It
   remaps the buffer's default `:family` to a doc-matching TTF.  A
   non-obvious side effect: without this remap, Android's sfnt-android
   font backend doesn't pick a bold variant for TeX-fold overlay display
   strings, so `\textbf{X}` folds render regular-weight.  Turning font
   sync off breaks that visual, even though the fold text property still
   says `:weight bold`.  Don't disable it lightly.
-- A second buffer-local face-remap in `init.el` pins syntactic faces
+- A second buffer-local face-remap in `core/flow-latex.el` pins syntactic faces
   (`font-latex-sedate-face`, `-warning-face`, `-math-face`,
   `-string-face`, `-script-char-face`, doctex-*, and the standard
   `font-lock-{keyword,comment,function-name,variable-name,constant,
   builtin,preprocessor}-face`) to a monospace family so markup stays
   legible against the serif document font.  Content-styling faces
   (bold/italic/underline/sectioning/sub-super/verbatim/type) are
-  deliberately *not* remapped.  See `my/latex-code-font-faces` in
-  `init.el`.
+  deliberately *not* remapped.  See `flow-latex-code-font-faces` in
+  `core/flow-latex.el`.
 
 ## Package system quirks
 
@@ -125,8 +149,8 @@ code alone.
   `use-package` isn't installed). Adding an unconditional refresh will
   hang startup on mobile networks — don't do it. To update, the user runs
   `M-x package-refresh-contents` manually.
-- `package--quickstart-maybe-refresh` is `:override`-advised (top of
-  `android-emacs/init.el`) to defer to `after-init-hook`. In Emacs 30,
+- `package--quickstart-maybe-refresh` is `:override`-advised (in
+  `core/flow-core.el`) to defer to `after-init-hook`. In Emacs 30,
   every `package-install` calls that function, which in turn calls
   `(package-initialize 'no-activate)` a second time — during init that
   triggers a spurious "Unnecessary call to `package-initialize' in
@@ -151,17 +175,17 @@ code alone.
 
 ## Common Claude tasks and how to approach them
 
-- **"Add a snippet."** Drop the file in `android-emacs/snippets/latex-mode/`
-  and symlink to `termux-emacs/snippets/latex-mode/` if it should work in
-  both editors. Then `M-x yas-reload-all` in Emacs.
+- **"Add a snippet."** Drop the file in `core/snippets/latex-mode/` —
+  all three profiles read that one directory directly from the repo.
+  Then `M-x yas-reload-all` in Emacs.
 - **"Preview isn't working."** Ask which pipeline stage the log stops at:
   pdflatex, pdf2dsc, ghostscript, or overlay placement. See README's
   troubleshooting table for known failure modes.
 - **"Deploy to a new device."** Follow `DEPLOY.md` step by step. Don't try
   to shortcut the manual steps (F-Droid install, permission grants) —
   they can't be automated.
-- **"Change font size."** Edit the `set-face-attribute 'default … :height`
-  line in `android-emacs/init.el` (startup value), or use `C-c e f`
+- **"Change font size."** Edit `flow-font-height` in the device's
+  profile init.el (startup value), or on the tablet use `C-c e f`
   (`my/eink-cycle-font-height` in `eink-faces.el`) at runtime. Previews
   follow automatically; already-rendered AUCTeX overlays need `C-c p c`
   + re-preview.
@@ -175,3 +199,9 @@ code alone.
 - Don't remove the `TEXMFROOT` export from `early-init.el`.
 - Don't move files out of the repo — the live setup is symlinked to
   paths inside this repo.
+- Don't rename `android-emacs/`, `termux-emacs/`, or the entry files —
+  the tablet's live symlinks point at those exact paths, and the local
+  clone there is still named `boox-latex-setup` (the GitHub repo was
+  renamed to `flow-emacs`; the directory name on a device is free).
+- Don't put device conditionals inside core modules — add a knob in
+  `core/flow-boot.el` and set it from the profiles instead.

@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: sb — auto: subscript
-# key: sb
-# condition: (and (texmathp) 'auto)
-# type: snippet
-# --
-_{$1}$0

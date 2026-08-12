@@ -1,5 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# install.sh — idempotent deployer for boox-latex-setup.
+# install.sh — idempotent deployer for the BOOX TABLET profiles.
+# (For the laptop, run install-laptop.sh on the laptop instead.)
 #
 # Run from Termux, from the repo root:
 #   cd ~/boox-latex-setup && bash install.sh
@@ -141,22 +142,29 @@ link "${REPO}/bin/latex-preview-server"  "${HOME_}/.local/bin/latex-preview-serv
 link "${REPO}/bin/notes-init"            "${HOME_}/.local/bin/notes-init"
 chmod +x "${REPO}/bin/"*
 
+# Only the ENTRY POINTS are linked.  Each profile's init.el resolves its
+# own symlink (file-truename) to find the repo, and loads core modules,
+# snippets and eink-faces straight from the working tree — so a `git
+# pull` updates a device completely, and adding a core module never
+# needs a new symlink.  Older installs also linked latex-font-sync.el
+# and snippets/ into the live .emacs.d; those symlinks are now unused
+# and removed below if present.
+prune() { [ -L "$1" ] && rm -f "$1" && log "pruned stale link: $1" || true; }
+
 log "Linking Termux Emacs config"
 link "${REPO}/termux-emacs/init.el" "${HOME_}/.config/emacs/init.el"
 for s in mm dm sr sb ee; do
-    link "${REPO}/termux-emacs/snippets/latex-mode/$s" \
-         "${HOME_}/.config/emacs/snippets/latex-mode/$s"
+    prune "${HOME_}/.config/emacs/snippets/latex-mode/$s"
 done
 
 if [ -d "${ANDROID_EMACS_HOME}" ]; then
     log "Linking Android Emacs config"
     link "${REPO}/android-emacs/early-init.el"        "${ANDROID_EMACS_D}/early-init.el"
     link "${REPO}/android-emacs/init.el"              "${ANDROID_EMACS_D}/init.el"
-    link "${REPO}/android-emacs/latex-font-sync.el"   "${ANDROID_EMACS_D}/latex-font-sync.el"
-    link "${REPO}/android-emacs/eink-faces.el"        "${ANDROID_EMACS_D}/eink-faces.el"
+    prune "${ANDROID_EMACS_D}/latex-font-sync.el"
+    prune "${ANDROID_EMACS_D}/eink-faces.el"
     for s in mm dm sr sb ee; do
-        link "${REPO}/android-emacs/snippets/latex-mode/$s" \
-             "${ANDROID_EMACS_D}/snippets/latex-mode/$s"
+        prune "${ANDROID_EMACS_D}/snippets/latex-mode/$s"
     done
     # Convenience symlinks so C-x C-f in the Emacs app reaches Termux files.
     link "${HOME_}"                    "${ANDROID_EMACS_HOME}/termux-home"

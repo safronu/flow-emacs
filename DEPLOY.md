@@ -1,4 +1,12 @@
-# Deployment guide
+# Deployment guide (Boox tablet)
+
+For the laptop, the whole guide is: clone this repo and run
+`bash install-laptop.sh`.  Everything below is the tablet.
+
+The repo was renamed `boox-latex-setup` → `flow-emacs` on GitHub; the
+clone directory on a device can keep any name (the config finds the
+repo through its own symlinks), so the existing tablet install stays at
+`~/boox-latex-setup` untouched.
 
 Reproduces the full LaTeX-on-Boox setup on a fresh device. Split into
 **manual** steps (must be done by the user with a screen) and **automated**
