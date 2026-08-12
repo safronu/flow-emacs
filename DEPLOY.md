@@ -122,6 +122,14 @@ bash install.sh
    Then `M-x telega` and sign in (phone number → SMS code, or QR from
    another logged-in Telegram client). Auth state persists under
    `~/.telega/`.
+6. **Deadlines (optional, separate private repo).** Needs SSH: `pkg install
+   openssh`, `ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 -C boox`, add
+   the public key at github.com → Settings → SSH and GPG keys, then
+   `ssh-keyscan github.com >> ~/.ssh/known_hosts` and `git clone
+   git@github.com:safronu/deadlines.git ~/deadlines`. Both tablet profiles
+   already look for that path and load it if present, so nothing else is
+   needed — `C-c d` comes alive on the next launch. On the laptop the expected
+   path is `~/flow/deadlines` instead.
 
 ## Verification checklist
 

@@ -7,7 +7,7 @@
 #
 # What it does:
 #   1. Installs Termux packages (emacs, git, perl, python, ghostscript,
-#      mupdf-tools).
+#      mupdf-tools, openssh).
 #   2. Installs TeX Live 2026 scheme-infraonly if not already present,
 #      then adds the LaTeX kernel + preview-latex runtime + the font
 #      families latex-font-sync knows about (latex-bin, amsmath, amsfonts,
@@ -41,7 +41,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 # ── 1. Termux packages ────────────────────────────────────────────────────
 log "Installing Termux packages"
 pkg install -y emacs git perl python wget ghostscript mupdf-tools texlive-bin \
-    texlive-installer
+    texlive-installer openssh
 
 # ── 2. TeX Live ───────────────────────────────────────────────────────────
 TL_YEAR=2026

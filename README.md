@@ -229,6 +229,8 @@ See [`DEPLOY.md`](./DEPLOY.md). The short version:
 - Math notes: `notes-init` scaffolds a Stacks-style multi-chapter project
   (`~/math-notes` by default); references via RefTeX — `C-c )` to insert,
   `C-c &` to follow, `C-c =` for the TOC.
+- Deadlines: `C-c d d` the live agenda, `C-c d c` to capture, `C-c d s` to
+  sync. Present only where the private `deadlines` repo is cloned.
 - Full cheatsheet: [`scratch/CHEATSHEET.md`](./scratch/CHEATSHEET.md).
 
 ## Troubleshooting
@@ -249,3 +251,4 @@ short:
 | Preview fails with `pdf2dsc: command not found` | Termux ghostscript is at exactly 10.05.0 — the one release that dropped `pdf2dsc` (restored in 10.05.1). Upgrade: `pkg upgrade ghostscript` (or `pkg install ghostscript` after `pkg update`). |
 | `M-o` undefined (ace-window not installed yet) | First launch after adding ace-window needs network once; if it was offline, reconnect and restart Emacs (or run `M-x package-install RET ace-window`) |
 | Org previews don't auto-reveal source at point | org-fragtog not installed yet (its org hook is guarded, so nothing errors — the feature is just absent). First launch after adding it needs network once, or `M-x package-install RET org-fragtog`, then restart |
+| `C-c d` undefined | The private `deadlines` repo isn't cloned on this device, so `core/flow-deadlines.el` no-ops by design. It needs an SSH key first — see `DEPLOY.md` "After install (manual)" item 6. |
