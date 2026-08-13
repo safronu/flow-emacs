@@ -43,6 +43,10 @@
       ;; machinery bold/italic folds render inconsistently under Termux;
       ;; historically this profile never folded.  Keep it off.
       flow-latex-fold nil
+      ;; flow-page's display-math air is sized from pixel font metrics,
+      ;; which a tty doesn't have.  The module is never loaded here; the
+      ;; nil documents intent.
+      flow-page nil
       flow-deadlines-repo
       (let ((d (expand-file-name "~/deadlines"))) (and (file-directory-p d) d)))
 

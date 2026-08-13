@@ -199,6 +199,42 @@ code alone.
   deliberately *not* remapped.  See `flow-latex-code-font-faces` in
   `core/flow-latex.el`.
 
+## Page look (flow-page)
+
+- `core/flow-page.el`, knob `flow-page` (laptop + android t, Termux
+  nil and the module is never loaded there).  Buffer-local
+  `flow-page-mode` on `LaTeX-mode-hook` adds ONE thing: visual
+  \abovedisplayskip/\belowdisplayskip air around `\[...\]` and display
+  environments — jit-lock-managed overlays tagged `'flow-page` putting
+  `'line-spacing` on the newline before the opener and on the closer's
+  newline.  Class metrics (`flow-page-class-metrics-alist`) were
+  measured from real compiles — amsart a4 11pt (0.35 line) and article
+  10pt (0.83 line); pt-size options, `\*shortskip` variants and `$$`
+  are deliberately unsupported.
+- The module began as a full "page look" (uniform \baselineskip
+  leading via buffer `line-spacing` + mono scaled to fit the serif
+  row, \textwidth column with fit-width/margins, \parindent overlays,
+  fold-display-string restyling to the document serif) — all verified
+  working, then **rolled back at the user's request on 2026-08-13**:
+  in the usual half-screen split the extras read as wasted space.
+  Only the display-math separation survived.  Don't reintroduce the
+  rest without asking.
+- Traps learned then, KEEP for any future overlay/metrics work here:
+  (1) a relative face `:height` float STACKS per remapped face on the
+  same char (math + sedate → 0.744² = 0.55 em) — use absolute heights;
+  (2) `find-font`+`font-spec` opens at a degenerate size (px 1) for
+  metrics — open `"FAMILY:pixelsize=32"` instead; (3) `font-info` of
+  `(face-font 'default)` ALREADY includes the font-sync remap AND
+  `text-scale-mode` (index 2 = em px, index 3 = ascent+descent) —
+  never multiply by the zoom again; (4) overlay display strings do NOT
+  see buffer face-remaps (folds render in the FRAME default family —
+  restyling needs advice on `TeX-fold-hide-item` AND
+  `TeX-fold-make-overlay`, the latter because `TeX-fold-verbs`/
+  `-quotes` bypass hide-item on first fold); (5) an overlay carrying
+  `'evaporate` must cover ≥1 char — zero-length self-deletes on the
+  spot; (6) any width-fit must go through `text-scale-set`, never a
+  private remap cookie, or preview sizing desyncs.
+
 ## Bundled fonts
 
 - `android-emacs/fonts/` also carries **Demi** cuts, preferred by the

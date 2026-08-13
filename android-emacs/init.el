@@ -37,6 +37,7 @@
       flow-theme 'modus-operandi      ; pure white background
       flow-monochrome-latex-faces t   ; hue carries nothing on 16 grays
       flow-latex-fold t
+      flow-page t
       ;; E-ink hairline strategy: a LARGER regular cut, not bold.  Bold
       ;; was tried and looked squat next to the compiled PDF (wider
       ;; glyphs, closed counters).  Extra size keeps the document's
@@ -132,6 +133,12 @@
                              "TeX Gyre Schola" "Noto Serif" "serif"))))
 
 (latex-font-sync-mode 1)
+
+;; Display-math air on top of the synced font: full-line formulas get
+;; \abovedisplayskip-sized separation, like the compiled page.  Em
+;; pixels are measured from the effective buffer font, so
+;; `flow-font-sync-extra-scale' above flows through automatically.
+(flow-load "flow-page")
 
 ;;; --- Deadlines (private repo, loaded only if cloned) ----------------------
 

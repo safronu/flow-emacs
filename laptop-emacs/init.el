@@ -38,6 +38,7 @@
       flow-theme 'modus-operandi
       flow-monochrome-latex-faces nil
       flow-latex-fold t
+      flow-page t
       flow-aw-leading-char-height 2.0
       ;; Deadlines checkout lives next to this repo in the flow folder.
       flow-deadlines-repo
@@ -66,6 +67,10 @@
 ;; dance is Android-only).
 (flow-load "latex-font-sync")
 (latex-font-sync-mode 1)
+
+;; Display-math air on top of the synced font: full-line formulas get
+;; \abovedisplayskip-sized separation, like the compiled page.
+(flow-load "flow-page")
 
 ;;; --- pdf-tools: proper PDF rendering (laptop only) --------------------------
 ;;

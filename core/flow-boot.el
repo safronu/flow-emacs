@@ -91,6 +91,12 @@ awkward to point at.")
 (defvar flow-latex-fold t
   "Non-nil to enable `TeX-fold-mode' in LaTeX buffers and fold on open.")
 
+(defvar flow-page t
+  "Non-nil to enable `flow-page-mode' in LaTeX buffers.
+Adds \\abovedisplayskip-sized air around display math, like the
+compiled page.  Needs a graphical frame and the `flow-page' module —
+the Termux profile sets this nil and never loads it.")
+
 (defvar flow-font-sync-weight nil
   "Weight for the font-sync buffer remap, or nil to keep the regular cut.
 Tried as `bold' on e-ink against the hairline problem and rejected:
