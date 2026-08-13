@@ -271,6 +271,40 @@ code alone.
   `after-init-time` (silencing the check) and coalesces multi-install
   runs. Do not remove the advice.
 
+## gptel / LLM chat (laptop only)
+
+- `core/flow-gptel.el` (module, C-c g prefix) +
+  `core/gptel-claude-code.el` (our own gptel backend library, kept
+  in-repo like `latex-font-sync.el`, with `gptel-claude-code-tests.el`
+  and `gptel-claude-code-fixture.jsonl` beside it).  gptel itself comes
+  from **MELPA**; the backend shells out to the local `claude` CLI in
+  headless mode (subscription auth, no API keys, one `claude -p`
+  process per request, stateless full-transcript replay).  Only the
+  laptop profile loads the module — the tablets have no claude CLI.
+- The backend replaces gptel's transport via advice on
+  `gptel-curl-get-response`/`gptel--url-get-response` and reuses
+  internal contracts (callback symbols, FSM transitions).  Verified
+  against gptel-20260703.  After `M-x package-refresh-contents` +
+  gptel upgrade, run the ERT suite first, from the repo root:
+  `emacs -Q --batch --eval '(package-initialize)' -L core -l
+  gptel-claude-code-tests.el -f ert-run-tests-batch-and-exit`
+  (tests the installed elpa gptel; live e2e adds
+  `GPTEL_CLAUDE_LIVE=1`, costs quota).
+- Streaming requires `gptel-use-curl` non-nil (the default) even
+  though no curl runs — gptel's streaming gate consults it.  Don't
+  "clean up" that variable for this backend.
+- Emacs 30's bundled transient is too old for gptel's menu (missing
+  `:environment` slot); the MELPA transient already installed in the
+  laptop's elpa satisfies it.  A fresh machine gets it as a gptel
+  dependency automatically.
+- Chat buffers default to markdown-mode (gptel's own default; markdown
+  preview keys apply).  Do NOT default them to org-mode without
+  scoping org-fragtog first — see the org-fragtog note above.
+- The backend was developed in `~/flow/gptel-headless` (research
+  workspace with the gptel v0.9.9.5 source it was built against, spec
+  documents, and the implementation plan).  THIS repo's copy is
+  canonical now; that workspace is reference material.
+
 ## Telega / TDLib
 
 - `telega.el` is installed on the native Android Emacs only (Termux

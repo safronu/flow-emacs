@@ -13,6 +13,7 @@
 ;; Keys on top of the shared ones:
 ;;   C-c p p / b / c   preview at point / whole buffer / clear (flow-preview)
 ;;   C-c d …           deadlines, when ~/flow/deadlines is cloned
+;;   C-c g …           LLM chat via the Claude Code CLI (flow-gptel)
 
 ;;; Code:
 
@@ -57,6 +58,7 @@
 (flow-load "flow-latex")      ; AUCTeX, cdlatex, snippets, folding
 (flow-load "flow-preview")    ; inline previews in .tex and .org
 (flow-load "flow-live-pdf")   ; C-c p l: compiled PDF in a chosen window
+(flow-load "flow-gptel")      ; C-c g …: LLM chat via the Claude Code CLI
 
 ;; Buffer font follows the document's font package.  The TeX Gyre and
 ;; Latin Modern families are installed system-wide by TeX Live on this
