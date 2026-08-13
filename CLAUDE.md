@@ -132,6 +132,41 @@ code alone.
   for the PDF file and must not steal focus.  The Termux profile loads
   none of this (no images).
 
+## Markdown preview
+
+- `core/flow-markdown.el` is loaded by ALL THREE profiles, Termux
+  included — unlike `flow-preview`, it needs no image support: the
+  preview is an eww *text* render of exported HTML.  Only `C-c p i`
+  (inline images) is graphical, and it says so on a tty.
+- The pipeline is markdown-mode's, not AUCTeX's: buffer → external
+  converter (`markdown-command`) → HTML *fragment* → markdown-mode
+  wraps it in a `<head>` (our stylesheet in
+  `markdown-xhtml-header-content`) → written beside the source as
+  `FOO.html` → eww.  **Never add `--standalone`**: markdown-mode adds
+  its header only when the output does NOT match
+  `markdown-xhtml-standalone-regexp`, so a full document silently
+  drops our CSS.
+- pandoc is invoked `--from=markdown`, NOT `--from=gfm`: the gfm reader
+  is commonmark-based and rejects `tex_math_dollars` outright ("The
+  extension tex_math_dollars is not supported for gfm"), which would
+  leave `$x$` as literal text.  The `markdown` reader gives math, pipe
+  tables, task lists and strikethrough together.
+- Math is deliberately rendered two ways.  Default (eww): pandoc's
+  plain HTML math, i.e. real `<sup>`/`<em>` that shr draws as raised
+  superscripts.  `--mathml` is added ONLY for the browser render
+  (`C-c p b`, `flow-markdown--mathml-command`) — in eww it is worse
+  than useless: shr can't lay MathML out and prints pandoc's
+  `<annotation>` copy of the TeX as well, so every formula appeared
+  twice.
+- The exported `FOO.html` is a real file in the source directory,
+  deleted when the live preview is switched off
+  (`markdown-live-preview-delete-export` = `delete-on-destroy`); a hard
+  kill of Emacs mid-preview leaves it behind.
+- `:config` in that use-package block is deferred (the `:mode` keyword
+  makes markdown-mode autoload), so `markdown-command` and the `C-c p`
+  keys only exist once a markdown buffer has been opened.  That is
+  expected — don't "fix" it by forcing the package to load at startup.
+
 ## Folding + buffer font
 
 - `TeX-fold-mode` is on in every LaTeX buffer, and the buffer auto-folds
@@ -182,10 +217,30 @@ code alone.
   count files in /data/data/org.gnu.emacs/files/fonts/ FIRST, theorize
   never.  A missing-install.sh here once cost a full parser audit.
 - Keep OS/2 usWeightClass at 400 on generated fonts; the grades are
-  separate FAMILIES ("... Book", "... Demi"), so the weight field
+  separate FAMILIES ("... Ink", "... Demi"), so the weight field
   carries nothing and standard values avoid any driver's weight-name
   mapping quirks (sfntfont.c keys weights off style-string tokens like
   "book"/"demibold" — family names are used verbatim).
+- **Grade suffixes should not be font-style vocabulary.** The subtle
+  grade was renamed "... Book" → "... Ink" on 2026-08-13 as defensive
+  hygiene, NOT because the family failed to load: an `emacs -Q` probe
+  verified the face `:family` path (the only path latex-font-sync and
+  try-family use) matches and renders "Latin Modern Roman Book"
+  correctly on the ftcrhb backend, and sfntfont.c matches families by
+  exact string equality.  The hazard is name-STRING contexts only:
+  `font.c` `font_parse_fcname` (used by `set-frame-font`, frame
+  parameters, GTK-style names) treats a trailing "book" as a weight
+  token (weight 80 = regular) and strips it, `fonts-conf(5)` lists
+  "book" among fontconfig's style constants, and sfntfont.c's
+  weight-token list has it too — so "Family Book" misparses in those
+  contexts and muddies `fc-match` debugging.  ("Demi" is absent from
+  the trailing-token lists — only "demibold" is in them.)  A
+  try-family report of "no effect" for the preferred grade usually
+  means the ladder already had the buffer in that grade — check
+  `M-x flow-font-report`'s "font at point" before theorizing.  Before
+  inventing a new suffix, check it against `weight_table` /
+  `PROP_MATCH` lists in Emacs `src/font.c`, fontconfig's constants in
+  `fonts-conf(5)`, and sfntfont.c's style tokens.
 - Two traps learned converting: (1) fontTools keeps the source's
   `OTTO` sfnt tag; a glyf font in an OTTO wrapper is rejected before
   any table is read — set `sfntVersion` explicitly (otf2ttf.py does).

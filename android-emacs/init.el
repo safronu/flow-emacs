@@ -13,6 +13,7 @@
 ;;
 ;; Keys added on top of the shared ones:
 ;;   C-c p p / b / c   preview at point / buffer / clear   (flow-preview)
+;;   C-c p p / b / c   in .md: live preview / browser / close (flow-markdown)
 ;;   C-c e f           cycle the default font height       (eink-faces)
 ;;   C-c e g           full redraw, clears e-ink ghosting  (eink-faces)
 
@@ -79,6 +80,7 @@
 (flow-load "flow-latex")      ; AUCTeX, cdlatex, snippets, folding
 (flow-load "flow-preview")    ; inline previews in .tex and .org
 (flow-load "flow-live-pdf")   ; C-c p l: compiled PDF in a chosen window
+(flow-load "flow-markdown")   ; markdown-mode + C-c p p live HTML preview
 
 ;;; --- Buffer font follows the document font --------------------------------
 ;;
@@ -100,21 +102,28 @@
 
 ;; Weight ladder for e-ink: regular LM/TeX Gyre hairlines wash out on
 ;; the 16-gray panel, bold is squat.  Two intermediate grades are
-;; bundled — "Book" (subtle: tools/embolden.py, +12 units LM / +10
+;; bundled — "Ink" (subtle: tools/embolden.py, +12 units LM / +10
 ;; TeX Gyre) and "Demi" (dark: LM's OFFICIAL demi converted via
-;; tools/otf2ttf.py; TeX Gyre synthesized at +20).  Book is preferred
+;; tools/otf2ttf.py; TeX Gyre synthesized at +20).  Ink is preferred
 ;; after Demi read as too dark in daily use; all grades stay installed,
 ;; so comparing is just `M-x my/latex-font-try-family' — no restart.
+;; ("Ink" was "Book" until 2026-08-13.  Renamed as defensive hygiene:
+;; the face :family path used here loads either name fine (verified),
+;; but "book" is a weight token in name-string parsers — font.c
+;; font_parse_fcname, fontconfig style constants, sfntfont.c's token
+;; list — so a style word inside a FAMILY name misparses under
+;; set-frame-font/fc-match and muddies debugging.  Grade suffixes
+;; should never be style vocabulary; see CLAUDE.md.)
 (setq my/latex-font-user-candidates
-      '((:family/lm-roman . ("Latin Modern Roman Book" "Latin Modern Roman Demi"
+      '((:family/lm-roman . ("Latin Modern Roman Ink" "Latin Modern Roman Demi"
                              "Latin Modern Roman" "Noto Serif" "serif"))
-        (:family/palatino . ("TeX Gyre Pagella Book" "TeX Gyre Pagella Demi"
+        (:family/palatino . ("TeX Gyre Pagella Ink" "TeX Gyre Pagella Demi"
                              "TeX Gyre Pagella" "Noto Serif" "serif"))
-        (:family/times    . ("TeX Gyre Termes Book" "TeX Gyre Termes Demi"
+        (:family/times    . ("TeX Gyre Termes Ink" "TeX Gyre Termes Demi"
                              "TeX Gyre Termes" "Noto Serif" "serif"))
-        (:family/bookman  . ("TeX Gyre Bonum Book" "TeX Gyre Bonum Demi"
+        (:family/bookman  . ("TeX Gyre Bonum Ink" "TeX Gyre Bonum Demi"
                              "TeX Gyre Bonum" "Noto Serif" "serif"))
-        (:family/newcent  . ("TeX Gyre Schola Book" "TeX Gyre Schola Demi"
+        (:family/newcent  . ("TeX Gyre Schola Ink" "TeX Gyre Schola Demi"
                              "TeX Gyre Schola" "Noto Serif" "serif"))))
 
 (latex-font-sync-mode 1)

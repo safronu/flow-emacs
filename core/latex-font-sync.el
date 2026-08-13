@@ -289,7 +289,7 @@ effective-font DPI)."
 (defun my/latex-font-try-family (family)
   "Prompt for a FAMILY string and remap this buffer's :family to it.
 Use this to test one candidate at a time on device — e.g. comparing
-the bundled weight grades (Book / Demi / regular) live.
+the bundled weight grades (Ink / Demi / regular) live.
 
 Completion offers every family the display actually has
 (`font-family-list'), plus all configured candidates (user overrides
