@@ -15,4 +15,5 @@ prv-*.svg
 auto/
 preview/
 .DS_Store
+.#*
 scratch/
