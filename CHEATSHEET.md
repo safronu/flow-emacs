@@ -250,6 +250,110 @@ git root.
 | `C-c a a` | Start a Claude Code agent shell at project root   |
 | `C-c a d` | Start one in a directory chosen explicitly        |
 
+Only those two are global; everything below is either an in-buffer key
+or `M-x`.
+
+**Talking to the agent.** The shell is a comint buffer — the prompt is
+the last line, history is `M-p`/`M-n`.
+
+| Keys        | Action                                                     |
+| ----------- | ---------------------------------------------------------- |
+| `RET`       | Submit the prompt                                          |
+| `S-RET`     | Newline inside the prompt                                  |
+| `@`         | Complete a project file at point                           |
+| `/`         | Complete an agent command                                  |
+| `C-c C-c`   | Interrupt the running turn (confirms first)                |
+| `TAB` / `S-TAB` | Next / previous item (tool call, permission, block)    |
+| `n` / `p`   | Same, outside the prompt area                              |
+| `r`         | Quote the region from the other buffer into the prompt     |
+| `C-y`       | Yank DWIM — text, image, or file path as an attachment     |
+| `+` `-` `0` | Scale inline images                                        |
+| `C-c C-o`   | Switch between the shell and its compose/viewport buffer   |
+| `C-M-h`     | Mark the response at point                                 |
+
+`M-x agent-shell-prompt-compose` writes the next prompt in a dedicated
+buffer (with the same `@` and `/` completion) instead of the one-line
+comint prompt — the way to send anything long. `M-x
+agent-shell-prompt-queue` queues a prompt *while the agent is busy*; it
+is sent automatically when the turn ends (`-resume`, `-remove` manage
+the queue). `M-x agent-shell-send-region` / `-send-dwim` /
+`-send-file-to` / `-send-screenshot` / `-send-clipboard-image` push
+context in from anywhere. Starting a shell with a region active, or
+from dired, carries that in too (`agent-shell-context-sources`).
+
+**Permissions, on the fly.** The current mode shows in the mode line and
+can be changed mid-session — the ACP adapter exposes Claude Code's own
+permission modes.
+
+| Keys      | Action                                             |
+| --------- | -------------------------------------------------- |
+| `C-<tab>` | Cycle session mode                                 |
+| `C-c C-m` | Pick session mode by name                          |
+| `C-c C-v` | Pick model (Opus / Opus 1M / Fable / Sonnet / Haiku) |
+| `C-c C-t` | Pick thought level (reasoning effort)              |
+| `C-c C-s` | One menu over every session option above           |
+
+Modes: **Manual** (`default`, asks before dangerous operations),
+**Auto** (a classifier answers the prompts), **Accept Edits**
+(auto-accepts file edits), **Plan Mode** (plans, executes nothing),
+**Don't Ask** (never asks, denies anything not pre-approved), **Bypass
+Permissions** (no checks). Clicking the mode name in the mode line opens
+the same menu. For a startup default set
+`agent-shell-anthropic-default-session-mode-id` to one of those ids.
+
+When the agent asks for permission, the buttons in the buffer are keys:
+
+| Key       | Action                                                  |
+| --------- | ------------------------------------------------------- |
+| `y`       | Allow once                                              |
+| `!`       | Always allow                                            |
+| `C-c C-c` | Reject — also interrupts, so you can course-correct     |
+| `v`       | View the diff                                           |
+
+In the diff buffer: `n`/`p` move by hunk, `y` accepts all, `C-c C-c`
+rejects all, `RET` opens the file, `q` quits. To answer permissions
+programmatically, set `agent-shell-permission-responder-function`
+(`#'agent-shell-permission-allow-always` is the built-in YOLO handler).
+
+**Several sessions.** One buffer per session, named `Claude @ <project>`;
+killing the buffer shuts that agent down.
+
+| Keys / command                  | Action                                     |
+| ------------------------------- | ------------------------------------------ |
+| `C-u M-x agent-shell`           | Force a new shell in the same project      |
+| `C-u C-u M-x agent-shell`       | Pick an existing shell                     |
+| `M-x agent-shell-switch-buffer` | Same picker, by name                       |
+| `M-x agent-shell-toggle`        | Show/hide this project's shell             |
+| `M-x agent-shell-new-worktree-shell` | New `git worktree` + a shell in it    |
+| `M-x agent-shell-new-temp-shell` | Shell in a temp dir, trashed on kill      |
+| `M-x agent-shell-fork`          | Branch a second shell off this session     |
+
+The worktree one is how to run two agents on the same repo without them
+fighting over the working tree.
+
+**Resuming.** Not a separate command — `C-c a a` asks the agent for the
+sessions in that directory and offers them, newest first, alongside “New
+shell”:
+
+| Variable                            | Effect                                          |
+| ----------------------------------- | ----------------------------------------------- |
+| `agent-shell-session-strategy`      | `prompt` (default) / `latest` / `new`           |
+| `agent-shell-session-restore-verbosity` | how much history is replayed: `minimal` (default, title only) / `last` / `first-last` / `full` |
+
+Sessions are the CLI's own and are keyed by working directory, so a
+shell started with `C-c a d` in a subfolder lists only that subfolder's
+sessions. `M-x agent-shell-resume-session` takes a session id directly,
+`-copy-session-id` yields one, `-reload` restarts the process on the
+same session, `-restart` starts a fresh session in the same project, and
+`-open-transcript` opens the saved conversation.
+
+**Inspecting.** `M-x agent-shell-show-usage` (tokens, context, cost — a
+context indicator also sits in the mode line);
+`agent-shell-view-traffic`, `agent-shell-view-acp-logs` and
+`agent-shell-toggle-logging` are the three to reach for when the adapter
+itself misbehaves. `agent-shell-mcp-servers` attaches MCP servers
+(stdio/http/sse) to new sessions.
+
 ## Files
 
 - `~/.emacs.d/init.el` — the config (mirror of Karthik's, tuned for e-ink).
