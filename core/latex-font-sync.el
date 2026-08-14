@@ -310,7 +310,20 @@ shrink the text back to code-font proportions."
   (let* ((intended (my/latex-detect-intended-family))
          (scale (* (or (cdr (assq intended my/latex-font-optical-scale-alist))
                        1.0)
-                   (or (bound-and-true-p flow-font-sync-extra-scale) 1.0))))
+                   (or (bound-and-true-p flow-font-sync-extra-scale) 1.0)))
+         ;; Guard against the completion UI handing back a mangled family
+         ;; (e.g. spaces silently replaced with underscores).  A remap to a
+         ;; family the font backend doesn't know cascades all the way to a
+         ;; system fallback whose cmap misses Latin, so every char draws as
+         ;; a glyphless-char box — visually white parallelograms all over
+         ;; the buffer.  find-font, not string membership: font-family-list
+         ;; is expensive on Android and the spec matcher is what a real
+         ;; face-remap would use anyway.
+         (found (and (display-graphic-p)
+                     (find-font (font-spec :family family)))))
+    (unless (or (not (display-graphic-p)) found)
+      (user-error "No font matches family %S — refusing to remap (would fall back to a system font and render as glyphless boxes)"
+                  family))
     (when my/latex-face-remap-cookie
       (face-remap-remove-relative my/latex-face-remap-cookie))
     (setq my/latex-face-remap-cookie

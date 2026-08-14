@@ -115,7 +115,16 @@
  '(dired-flagged   ((t (:foreground "#000000" :strike-through t :weight bold))))
  '(dired-header    ((t (:foreground "#000000" :weight ultra-bold :underline t))))
  '(completions-common-part      ((t (:foreground "#000000" :weight bold))))
- '(completions-first-difference ((t (:foreground "#000000" :weight ultra-bold :underline t))))
+ ;; No :underline here — the "first difference" is often a SPACE (e.g.
+ ;; completing "Latin Modern Roman" against "Latin Modern Roman Ink" /
+ ;; "... Demi", where the diverging char is the space before the grade
+ ;; token), and an underlined space is visually indistinguishable from
+ ;; an underscore on the panel.  Users then type what they "see", get
+ ;; face-remap :family "Latin Modern Roman_Ink" (a family no font has),
+ ;; cascade through the fallback chain to AndroidClock, and every
+ ;; character renders as a glyphless-char box.  Ultra-bold alone is
+ ;; enough of a signal on 16-gray e-ink.
+ '(completions-first-difference ((t (:foreground "#000000" :weight ultra-bold))))
 
  ;; --- AUCTeX chrome not covered by modus (upstream defaults dither) --
  ;; Folded macro content is real content: full ink, not SlateBlue.
