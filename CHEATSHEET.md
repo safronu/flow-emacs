@@ -234,6 +234,22 @@ in `android-emacs/init.el`, not your login.
 | `C-c g k` | Abort the request in this buffer                |
 | `C-c RET` | Inside a chat buffer: send (gptel's own key)    |
 
+## Agentic coding (`C-c a` prefix, laptop only)
+
+`agent-shell` driving Claude Code over ACP — the agentic complement to
+`C-c g` chat: the agent edits files and runs commands, asking
+permission per action and showing diffs to accept or reject. Same
+subscription login as gptel, no API key. The shell starts at the
+current buffer's **project root** (git root); use `d` to pick the
+directory explicitly — that is also the only way to scope the agent to
+a subfolder of a repo, since project detection always climbs to the
+git root.
+
+| Keys      | Action                                            |
+| --------- | ------------------------------------------------- |
+| `C-c a a` | Start a Claude Code agent shell at project root   |
+| `C-c a d` | Start one in a directory chosen explicitly        |
+
 ## Files
 
 - `~/.emacs.d/init.el` — the config (mirror of Karthik's, tuned for e-ink).
