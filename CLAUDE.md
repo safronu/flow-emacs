@@ -190,6 +190,16 @@ code alone.
   strings, so `\textbf{X}` folds render regular-weight.  Turning font
   sync off breaks that visual, even though the fold text property still
   says `:weight bold`.  Don't disable it lightly.
+- Font-sync detection reads the BUFFER'S OWN preamble first
+  (`my/latex-font--scan-preamble-packages`) and only then AUCTeX's
+  `LaTeX-provided-package-options`.  That order is a bug fix
+  (2026-08-15), not an accident: AUCTeX registers parsed styles in the
+  GLOBAL `TeX-style-hook-list` keyed by bare base name, so two open
+  documents both named `test.tex` share one entry — the second one to
+  load inherits the first one's (possibly stale `auto/*.el`) package
+  list and `TeX-auto-apply` never re-parses it.  Symptom: a mathpazo
+  document stuck on the Latin Modern fallback until a save re-parsed
+  it.  Do not "simplify" detection back to the parse info alone.
 - A second buffer-local face-remap in `core/flow-latex.el` pins syntactic faces
   (`font-latex-sedate-face`, `-warning-face`, `-math-face`,
   `-string-face`, `-script-char-face`, doctex-*, and the standard

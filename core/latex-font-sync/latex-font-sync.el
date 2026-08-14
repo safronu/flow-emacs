@@ -83,6 +83,10 @@ Applied to arguments of `\\renewcommand{\\rmdefault}{...}' in the preamble.")
   "\\\\renewcommand\\*?\\s-*{?\\\\rmdefault}?\\s-*{\\([a-z]+\\)}"
   "Regex matching `\\renewcommand{\\rmdefault}{code}' with optional braces.")
 
+(defconst my/latex-font-usepackage-regex
+  "\\\\usepackage\\(?:\\[[^]]*\\]\\)?\\s-*{\\([^}]+\\)}"
+  "Regex matching `\\usepackage[opts]{pkg1, pkg2, ...}'.")
+
 ;;; --- Layer B: intended-family → ordered TTF candidate list --------------
 
 (defconst my/latex-font-candidate-alist
@@ -151,6 +155,35 @@ It may `setq' the following variables:
 
 ;;; --- Layer A/preamble: detect intended family in current buffer ---------
 
+(defun my/latex-font--preamble-end ()
+  "Position where the preamble of the current buffer ends, for scanning."
+  (or (and (boundp 'LaTeX-header-end)
+           (save-excursion
+             (goto-char (point-min))
+             (re-search-forward LaTeX-header-end nil t)))
+      (min (point-max) 10000)))
+
+(defun my/latex-font--scan-preamble-packages ()
+  "Scan THIS buffer's preamble for a known font package; key or nil.
+Reads the buffer text, deliberately NOT AUCTeX's parse info: AUCTeX
+keys parsed styles by bare base name in the GLOBAL `TeX-style-hook-list',
+so two open documents that are both named e.g. test.tex share one
+entry — the second one to load inherits the first one's package list
+and is never re-parsed (`TeX-auto-apply' is skipped when a hook for
+the name exists).  The buffer's own text is ground truth for what the
+buffer should look like.  Last match wins, like LaTeX's last-loaded."
+  (save-excursion
+    (save-restriction
+      (widen)
+      (goto-char (point-min))
+      (let ((end (my/latex-font--preamble-end))
+            result)
+        (while (re-search-forward my/latex-font-usepackage-regex end t)
+          (dolist (pkg (split-string (match-string 1) "[, \t\n]+" t))
+            (let ((key (cdr (assq (intern pkg) my/latex-font-package-alist))))
+              (when key (setq result key)))))
+        result))))
+
 (defun my/latex-detect-intended-family ()
   "Return the intended-family key for the current LaTeX buffer, or nil.
 Nil means \"unknown, don't touch the face\" (AUCTeX hasn't parsed yet).
@@ -161,25 +194,28 @@ Fallback for parsed-but-no-font-package buffers is `:family/lm-roman'."
         ;; Everything else needs AUCTeX's parse to be reliable.
         (when (bound-and-true-p TeX-active-styles)
           (or
-           ;; 2. Package alist: last match wins (approximates last-loaded).
+           ;; 2. This buffer's own preamble.  Trusted over AUCTeX's parse
+           ;; info because that is keyed by bare base name globally and
+           ;; poisoned by same-named documents (see the scan docstring).
+           (my/latex-font--scan-preamble-packages)
+           ;; 3. Package alist from AUCTeX's parse: last match wins
+           ;; (approximates last-loaded).  Still needed for multi-file
+           ;; documents whose preamble lives in the master file.
            (let (result)
              (dolist (entry (bound-and-true-p LaTeX-provided-package-options))
                (let ((key (cdr (assq (intern (car entry))
                                      my/latex-font-package-alist))))
                  (when key (setq result key))))
              result)
-           ;; 3. NFSS `\renewcommand{\rmdefault}{...}' in preamble.
+           ;; 4. NFSS `\renewcommand{\rmdefault}{...}' in preamble.
            (save-excursion
              (save-restriction
                (widen)
                (goto-char (point-min))
-               (let ((end (or (and (boundp 'LaTeX-header-end)
-                                   (save-excursion
-                                     (re-search-forward LaTeX-header-end nil t)))
-                              (min (point-max) 10000))))
+               (let ((end (my/latex-font--preamble-end)))
                  (when (re-search-forward my/latex-font-rmdefault-regex end t)
                    (cdr (assoc (match-string 1) my/latex-font-nfss-code-alist))))))
-           ;; 4. Default when parsed but no font info: Latin Modern.
+           ;; 5. Default when parsed but no font info: Latin Modern.
            :family/lm-roman)))))
 
 ;;; --- Layer B: resolve intended-family → available family string ---------
