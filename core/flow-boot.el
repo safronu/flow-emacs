@@ -149,6 +149,14 @@ with \"Not logged in - Please run /login\".  See `flow-gptel'.")
 (defvar flow-org-preview-image-directory nil
   "Directory for org's cached LaTeX-fragment images, or nil for org's default.")
 
+(defvar flow-markdown-command nil
+  "Argv list for the Markdown-to-HTML converter, or nil to auto-detect.
+Nil means `flow-markdown' picks the first installed program from
+`flow-markdown-command-candidates' (pandoc first).  Set it in a profile
+only to override that choice — e.g. \\='(\"pandoc\" \"--from=markdown\").
+The program must read Markdown on stdin and write an HTML fragment, not
+a standalone document; see `flow-markdown.el'.")
+
 ;;; --- Diagnostics ------------------------------------------------------------
 
 (defun flow-font-report ()

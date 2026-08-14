@@ -16,6 +16,9 @@
 ;;   <f5>   render the formula at point to PNG, open in Android's viewer
 ;;   <f6>   render the whole buffer body
 ;;   <f7>   re-open the last render
+;;
+;; In .md buffers, C-c p p / b / c drive the Markdown preview
+;; (flow-markdown) — an eww text render, no images needed.
 
 ;;; Code:
 
@@ -63,6 +66,10 @@
 
 (flow-load "flow-core")       ; packages, defaults, M-o window management
 (flow-load "flow-latex")      ; AUCTeX, cdlatex, snippets, folding
+;; Markdown is fine here even without image support: the preview is an
+;; HTML *text* render in eww, not an overlay.  Inline images (C-c p i)
+;; are the one key that refuses to work on this build, and says so.
+(flow-load "flow-markdown")   ; markdown-mode + C-c p p live HTML preview
 (flow-load "flow-deadlines")  ; private repo, loaded only if cloned
 ;; NOT flow-preview: it drives image overlays this build cannot display.
 

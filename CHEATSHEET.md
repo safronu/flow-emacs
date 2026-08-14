@@ -26,6 +26,22 @@ The same `C-c p p` / `C-c p b` / `C-c p c` work in `.org` buffers too
 (`C-c p p` toggles the fragment at point; org's own `C-c C-x C-l` also
 still works).
 
+## Markdown (`.md`)
+
+| Keys      | Action                                             |
+| --------- | -------------------------------------------------- |
+| `C-c p p` | Live HTML preview in a side window, re-renders on save |
+| `C-c p b` | Render once, open in the system browser (math typeset) |
+| `C-c p c` | Close the live preview                             |
+| `C-c p i` | Toggle inline images                               |
+
+Same prefix as the LaTeX/org previews, different engine: the buffer goes
+through `pandoc` and the HTML is shown by eww (`C-c p p`) or a real
+browser (`C-c p b`). markdown-mode's own keys still work — `C-c C-s`
+insertion family, `C-c C-n`/`C-c C-p` heading motion, `C-c C-c l`/`p`.
+Math (`$x$`) is fontified in the buffer and typeset only in the browser
+view; for real math work use `.tex`.
+
 ## Folding + fonts
 
 `TeX-fold-mode` is on by default and the buffer folds itself on open.

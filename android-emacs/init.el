@@ -86,12 +86,7 @@
 (flow-load "flow-latex")      ; AUCTeX, cdlatex, snippets, folding
 (flow-load "flow-preview")    ; inline previews in .tex and .org
 (flow-load "flow-live-pdf")   ; C-c p l: compiled PDF in a chosen window
-;; Guarded: the load line was committed ahead of core/flow-markdown.el
-;; itself (in-progress in another session).  The guard keeps a pull
-;; from aborting init on a module missing from the tree; drop it once
-;; flow-markdown.el is committed.
-(when (file-exists-p (flow-core-file "flow-markdown.el"))
-  (flow-load "flow-markdown")) ; markdown-mode + C-c p p live HTML preview
+(flow-load "flow-markdown")   ; markdown-mode + C-c p p live HTML preview
 ;; LLM chat via the Termux `claude' CLI.  Possible here only since the
 ;; 2026-08-14 migration put a working CLI on the tablet; the `exec-path'
 ;; block above finds it, `flow-claude-config-dir' supplies the login.

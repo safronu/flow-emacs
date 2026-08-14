@@ -29,10 +29,11 @@ log() { printf '[install] %s\n' "$*"; }
 # texlive-science            mathtools and friends
 # preview-latex-style        preview.sty for AUCTeX inline overlays
 # fonts-jetbrains-mono       same buffer font as the tablet
+# pandoc                     Markdown -> HTML for the .md preview (C-c p p)
 NEEDED=()
 for p in texlive-latex-recommended texlive-latex-extra \
          texlive-fonts-recommended texlive-science \
-         preview-latex-style ghostscript fonts-jetbrains-mono; do
+         preview-latex-style ghostscript fonts-jetbrains-mono pandoc; do
     dpkg -s "$p" >/dev/null 2>&1 || NEEDED+=("$p")
 done
 if [ "${#NEEDED[@]}" -gt 0 ]; then

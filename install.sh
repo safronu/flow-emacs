@@ -43,6 +43,16 @@ log "Installing Termux packages"
 pkg install -y emacs git perl python wget ghostscript mupdf-tools texlive-bin \
     texlive-installer openssh
 
+# Markdown converter for core/flow-markdown.el's C-c p p preview.  Kept
+# out of the line above and never fatal: which of these a Termux mirror
+# carries varies, and a missing converter costs only the preview —
+# editing .md works regardless, and the preview keys say what to install.
+if ! have pandoc && ! have cmark && ! have cmark-gfm; then
+    log "Installing a Markdown converter (optional)"
+    pkg install -y pandoc || pkg install -y cmark || \
+        log "No Markdown converter in this repo — .md preview stays off"
+fi
+
 # ── 2. TeX Live ───────────────────────────────────────────────────────────
 TL_YEAR=2026
 TL_ROOT="${PREFIX_}/share/texlive/${TL_YEAR}"

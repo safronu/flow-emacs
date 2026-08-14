@@ -32,6 +32,7 @@ instead of sniffing the machine.
 | theme | modus-operandi + eink-faces | terminal's own | modus-operandi, colour |
 | math folding | on | off (prettify-symbols instead) | on |
 | doc-font sync | on (bundled TTFs) | off (tty) | on (system TeX Gyre fonts) |
+| markdown preview | eww side window (`C-c p p`) | eww side window, text only | eww side window (`C-c p p`) |
 
 The private `deadlines` repo (customer data — never vendored here) is
 loaded if its checkout exists at the profile's declared path, silently
@@ -67,6 +68,7 @@ flow-emacs/
 │   ├── flow-latex.el               AUCTeX, RefTeX, cdlatex, yas, folding
 │   ├── flow-preview.el             Inline previews (.tex + .org) — GUI only
 │   ├── flow-live-pdf.el            C-c p l: fresh compiled PDF, ace-window placed
+│   ├── flow-markdown.el            markdown-mode + C-c p p HTML preview
 │   ├── flow-deadlines.el           Guarded loader for the private repo
 │   ├── latex-font-sync.el          Buffer :family follows LaTeX font package
 │   ├── latex-font-sync-tests.el    ERT tests for the above
@@ -114,6 +116,28 @@ shows its selection letter; press one to place the PDF there, or use a
 dispatch key first (`b` split side-by-side, `v` split top/bottom).
 `C-g` cancels.  Displayed through pdf-tools when installed, otherwise
 built-in doc-view, with auto-revert repainting on each rebuild.
+
+## Markdown
+
+`core/flow-markdown.el` puts `markdown-mode` on every profile and gives
+`.md` buffers the same `C-c p` prefix the .tex and .org previews use:
+`C-c p p` opens a live HTML preview in a side window that re-renders on
+save, `C-c p b` hands the same HTML to the system browser, `C-c p c`
+closes the preview, `C-c p i` toggles inline images.
+
+The engine is not AUCTeX's: markdown-mode pipes the buffer through an
+external converter — pandoc when installed, cmark/cmark-gfm and friends
+as fallbacks (`flow-markdown-command-candidates`, overridable per device
+with the `flow-markdown-command` knob) — wraps the returned HTML
+*fragment* in a `<head>` carrying our stylesheet, writes it beside the
+source as `FOO.html`, and shows it in eww. That export file is removed
+when the preview is switched off. Math is emitted as plain HTML for the
+eww view (real superscripts, one copy — `--mathml` there produced each
+formula twice) and as MathML for the browser view, which Firefox and
+Chrome typeset natively without network or JavaScript.
+
+With no converter installed nothing breaks: editing works, and the
+preview keys say which package to install for the device.
 
 ## Laptop notes
 
@@ -231,6 +255,8 @@ See [`DEPLOY.md`](./DEPLOY.md). The short version:
 - Math notes: `notes-init` scaffolds a Stacks-style multi-chapter project
   (`~/math-notes` by default); references via RefTeX — `C-c )` to insert,
   `C-c &` to follow, `C-c =` for the TOC.
+- Markdown: open any `.md`, `C-c p p` for the live preview beside it,
+  `C-c p b` to see it in the browser.
 - Deadlines: `C-c d d` the live agenda, `C-c d c` to capture, `C-c d s` to
   sync. Present only where the private `deadlines` repo is cloned.
 - Full cheatsheet: [`scratch/CHEATSHEET.md`](./scratch/CHEATSHEET.md).
@@ -253,4 +279,5 @@ short:
 | Preview fails with `pdf2dsc: command not found` | Termux ghostscript is at exactly 10.05.0 — the one release that dropped `pdf2dsc` (restored in 10.05.1). Upgrade: `pkg upgrade ghostscript` (or `pkg install ghostscript` after `pkg update`). |
 | `M-o` undefined (ace-window not installed yet) | First launch after adding ace-window needs network once; if it was offline, reconnect and restart Emacs (or run `M-x package-install RET ace-window`) |
 | Org previews don't auto-reveal source at point | org-fragtog not installed yet (its org hook is guarded, so nothing errors — the feature is just absent). First launch after adding it needs network once, or `M-x package-install RET org-fragtog`, then restart |
+| `C-c p p` in a `.md` says "No Markdown converter installed" | Nothing from `flow-markdown-command-candidates` is on PATH — `sudo apt install pandoc` on the laptop, `pkg install pandoc` (or `cmark`) under Termux. Editing is unaffected either way. |
 | `C-c d` undefined | The private `deadlines` repo isn't cloned on this device, so `core/flow-deadlines.el` no-ops by design. It needs an SSH key first — see `DEPLOY.md` "After install (manual)" item 6. |
