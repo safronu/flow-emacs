@@ -146,6 +146,13 @@ HOME is the app's private dir, but the CLI's login lives in Termux's
 `~/.claude'.  Without this the CLI starts fine and every request fails
 with \"Not logged in - Please run /login\".  See `flow-gptel'.")
 
+(defvar flow-claude-acp-command nil
+  "Argv list for the Claude Code ACP adapter, or nil for agent-shell's default.
+The default — (\"claude-agent-acp\") — resolves through `exec-path'.
+Set it in a profile only when the adapter needs an explicit path or
+wrapper, e.g. an Android profile pointing at a Termux-side Node
+script.  See `flow-agent-shell'.")
+
 (defvar flow-org-preview-image-directory nil
   "Directory for org's cached LaTeX-fragment images, or nil for org's default.")
 

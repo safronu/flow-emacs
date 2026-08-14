@@ -15,6 +15,7 @@
 ;;   C-c p p / b / c   in .md: live preview / browser / close (flow-markdown)
 ;;   C-c d …           deadlines, when ~/flow/deadlines is cloned
 ;;   C-c g …           LLM chat via the Claude Code CLI (flow-gptel)
+;;   C-c a …           agentic coding: agent-shell + Claude Code (flow-agent-shell)
 
 ;;; Code:
 
@@ -62,6 +63,7 @@
 (flow-load "flow-live-pdf")   ; C-c p l: compiled PDF in a chosen window
 (flow-load "flow-markdown")   ; markdown-mode + C-c p p live HTML preview
 (flow-load "flow-gptel")      ; C-c g …: LLM chat via the Claude Code CLI
+(flow-load "flow-agent-shell"); C-c a …: agentic coding, Claude Code over ACP
 
 ;; Buffer font follows the document's font package.  The TeX Gyre and
 ;; Latin Modern families are installed system-wide by TeX Live on this

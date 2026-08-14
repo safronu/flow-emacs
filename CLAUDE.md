@@ -442,6 +442,38 @@ code alone.
   gptel v0.9.9.5 source the docs' line numbers cite stays at
   `~/flow/gptel-headless/gptel/` (reference only, never on load-path).
 
+## agent-shell / agentic coding (laptop only, for now)
+
+- `core/flow-agent-shell.el` (module, C-c a prefix; `C-c a a` starts a
+  Claude Code agent shell at the current project root, `C-c a d` at an
+  explicitly chosen directory — project detection climbs to the git
+  root, so `d` is how a repo SUBFOLDER is scoped).  agent-shell +
+  acp.el + shell-maker, all MELPA.  The agentic complement to flow-gptel's chat: the agent edits
+  files and runs commands, with per-action permission prompts and diff
+  review in Emacs.  Only `laptop-emacs/` loads it today.
+- **The agent process is NOT the `claude` binary.**  acp.el spawns the
+  `claude-agent-acp` npm adapter (wraps the Claude Agent SDK, needs
+  Node ≥ 22), which speaks ACP on stdio.  On the laptop
+  `~/.local/bin/claude-agent-acp` is a hand-written wrapper pinning
+  nvm's Node v22.14.0 — the nvm *default* is v16 and cannot run it, so
+  don't "simplify" the wrapper away.  Adapter 0.59.0 verified by ACP
+  initialize handshake on 2026-08-15.
+- Auth is the CLI's subscription login
+  (`agent-shell-anthropic-make-authentication :login t`), no API keys —
+  same story as gptel; a login failure means run `claude` + `/login` in
+  a terminal once.
+- Knob `flow-claude-acp-command` (flow-boot) overrides the adapter
+  argv; nil = agent-shell's default, resolved via `exec-path`.
+  Reserved for the tablet phase: there the adapter must run under
+  Termux's node (the patched glibc `claude` binary story does not cover
+  the adapter — it's plain JS on bionic node, but whether the SDK it
+  wraps can drive the patched CLI is UNVERIFIED), and
+  `flow-claude-config-dir` applies exactly as it does for gptel.
+- agent-shell was new to this config's elpa caches: pre-installed on
+  the laptop 2026-08-15; any other machine needs one
+  `M-x package-refresh-contents` before first load or the use-package
+  ensure fails loudly at startup.
+
 ## Telega / TDLib
 
 - `telega.el` is installed on the native Android Emacs only (Termux
