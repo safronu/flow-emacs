@@ -192,6 +192,26 @@ device has to be running for that (GitHub delays scheduled runs, so it lands
 between 07:00 and roughly 07:20). The whole prefix is absent unless the
 checkout exists — that is by design, see `core/flow-deadlines.el`.
 
+## LLM chat (`C-c g` prefix)
+
+`gptel` with the local `claude` CLI as the backend (the CLI's own
+subscription login is the auth — no API key). Two backends are
+registered: **Claude-Code** (default, plain chat, sandboxed working
+dir) and **Claude-Agent** (real Claude Code tools in read-only `plan`
+mode, working dir = the request buffer's dir) — switch per buffer from
+`C-c g m`.
+
+| Keys      | Action                                          |
+| --------- | ----------------------------------------------- |
+| `C-c g g` | Open / switch to a chat buffer                  |
+| `C-c g s` | Send region, or buffer up to point              |
+| `C-c g m` | gptel menu (model, backend, system prompt, …)   |
+| `C-c g r` | Rewrite region                                  |
+| `C-c g a` | Add region / buffer to context                  |
+| `C-c g f` | Add file to context                             |
+| `C-c g k` | Abort the request in this buffer                |
+| `C-c RET` | Inside a chat buffer: send (gptel's own key)    |
+
 ## Files
 
 - `~/.emacs.d/init.el` — the config (mirror of Karthik's, tuned for e-ink).
