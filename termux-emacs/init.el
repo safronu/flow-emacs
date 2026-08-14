@@ -48,7 +48,7 @@
       ;; nil documents intent.
       flow-page nil
       flow-deadlines-repo
-      (let ((d (expand-file-name "~/deadlines"))) (and (file-directory-p d) d)))
+      (let ((d (expand-file-name "~/flow/deadlines"))) (and (file-directory-p d) d)))
 
 ;; TeX Live binaries must be visible to child processes even when this
 ;; Emacs was launched from a context that didn't source ~/.bashrc.

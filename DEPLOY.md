@@ -126,10 +126,9 @@ bash install.sh
    openssh`, `ssh-keygen -t ed25519 -N "" -f ~/.ssh/id_ed25519 -C boox`, add
    the public key at github.com → Settings → SSH and GPG keys, then
    `ssh-keyscan github.com >> ~/.ssh/known_hosts` and `git clone
-   git@github.com:safronu/deadlines.git ~/deadlines`. Both tablet profiles
+   git@github.com:safronu/deadlines.git ~/flow/deadlines`. All three profiles
    already look for that path and load it if present, so nothing else is
-   needed — `C-c d` comes alive on the next launch. On the laptop the expected
-   path is `~/flow/deadlines` instead.
+   needed — `C-c d` comes alive on the next launch.
 
 ## Verification checklist
 

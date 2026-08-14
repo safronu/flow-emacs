@@ -52,7 +52,7 @@
       ;; then does nothing at all.
       flow-deadlines-repo
       (seq-find #'file-directory-p
-                '("/data/data/com.termux/files/home/deadlines"
+                '("/data/data/com.termux/files/home/flow/deadlines"
                   "/data/data/org.gnu.emacs/files/deadlines"))
       ;; git run from this app would look for ~/.gitconfig and ~/.ssh in
       ;; the Emacs app's private dir, where there are none; the keys are
