@@ -139,6 +139,13 @@ The repo itself is never vendored here — it holds customer data.  See
 Needed only on Android, where Emacs's HOME is the app's private dir and
 the ssh keys live in Termux's home.")
 
+(defvar flow-claude-config-dir nil
+  "CLAUDE_CONFIG_DIR for `claude' subprocesses, or nil to inherit.
+Same shape of problem as `flow-deadlines-git-home': on Android, Emacs's
+HOME is the app's private dir, but the CLI's login lives in Termux's
+`~/.claude'.  Without this the CLI starts fine and every request fails
+with \"Not logged in - Please run /login\".  See `flow-gptel'.")
+
 (defvar flow-org-preview-image-directory nil
   "Directory for org's cached LaTeX-fragment images, or nil for org's default.")
 

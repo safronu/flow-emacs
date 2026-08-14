@@ -33,6 +33,16 @@
 
 ;;; Code:
 
+;; Point the CLI at its login when Emacs's HOME isn't the one that holds
+;; it (Android: the app's private dir, vs Termux's ~/.claude).  Verified
+;; on the Boox 2026-08-14: with a foreign HOME the CLI runs but every
+;; request returns "Not logged in - Please run /login"; with
+;; CLAUDE_CONFIG_DIR set it authenticates normally.  A global `setenv' is
+;; safe here — no other program reads this variable — and the CLI is
+;; started with `make-process', which inherits `process-environment'.
+(when flow-claude-config-dir
+  (setenv "CLAUDE_CONFIG_DIR" (expand-file-name flow-claude-config-dir)))
+
 (use-package gptel
   ;; The package's own autoloads cover the entry commands; :config runs
   ;; on first use, so startup pays nothing.

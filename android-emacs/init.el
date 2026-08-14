@@ -14,6 +14,7 @@
 ;; Keys added on top of the shared ones:
 ;;   C-c p p / b / c   preview at point / buffer / clear   (flow-preview)
 ;;   C-c p p / b / c   in .md: live preview / browser / close (flow-markdown)
+;;   C-c g …           LLM chat via the Claude Code CLI    (flow-gptel)
 ;;   C-c e f           cycle the default font height       (eink-faces)
 ;;   C-c e g           full redraw, clears e-ink ghosting  (eink-faces)
 
@@ -57,7 +58,11 @@
       ;; git run from this app would look for ~/.gitconfig and ~/.ssh in
       ;; the Emacs app's private dir, where there are none; the keys are
       ;; in the Termux home.
-      flow-deadlines-git-home "/data/data/com.termux/files/home")
+      flow-deadlines-git-home "/data/data/com.termux/files/home"
+      ;; Same story for the `claude' CLI: the binary is reachable through
+      ;; the Termux PATH added below, but its login lives in Termux's
+      ;; ~/.claude, not in this app's HOME.  See `flow-gptel'.
+      flow-claude-config-dir "/data/data/com.termux/files/home/.claude")
 
 ;;; --- Termux binaries on PATH ---------------------------------------------
 ;;
@@ -87,6 +92,10 @@
 ;; flow-markdown.el is committed.
 (when (file-exists-p (flow-core-file "flow-markdown.el"))
   (flow-load "flow-markdown")) ; markdown-mode + C-c p p live HTML preview
+;; LLM chat via the Termux `claude' CLI.  Possible here only since the
+;; 2026-08-14 migration put a working CLI on the tablet; the `exec-path'
+;; block above finds it, `flow-claude-config-dir' supplies the login.
+(flow-load "flow-gptel")      ; C-c g …: LLM chat via the Claude Code CLI
 
 ;;; --- Buffer font follows the document font --------------------------------
 ;;

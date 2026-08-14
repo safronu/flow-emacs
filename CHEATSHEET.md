@@ -201,6 +201,12 @@ dir) and **Claude-Agent** (real Claude Code tools in read-only `plan`
 mode, working dir = the request buffer's dir) — switch per buffer from
 `C-c g m`.
 
+Needs Termux's `claude` CLI (see `CLAUDE.md`); Emacs finds it on the
+same `PATH` it uses for TeX Live. If every request comes back `Not
+logged in · Please run /login`, the CLI is running but reading the
+Emacs app's HOME instead of Termux's — check `flow-claude-config-dir`
+in `android-emacs/init.el`, not your login.
+
 | Keys      | Action                                          |
 | --------- | ----------------------------------------------- |
 | `C-c g g` | Open / switch to a chat buffer                  |

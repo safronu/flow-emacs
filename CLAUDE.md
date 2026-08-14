@@ -307,7 +307,68 @@ code alone.
   `after-init-time` (silencing the check) and coalesces multi-install
   runs. Do not remove the advice.
 
-## gptel / LLM chat (laptop only)
+## Claude Code CLI on the Boox (Termux)
+
+- **Installed as a patched native binary, NOT via npm.**  Since 2.1.113
+  the `@anthropic-ai/claude-code` npm package ships only a native glibc
+  ELF — no Android target, no JS fallback — so it cannot run under
+  Termux's bionic libc.  2.1.112 was the last pure-JS release.  The
+  tablet was migrated off npm on 2026-08-14 and now runs the official
+  linux-arm64 binary with its ELF interpreter repointed at Termux's
+  glibc.
+- Method: [`ferrumclaudepilgrim/claude-code-android`][cca].  `install.sh`
+  is for a clean device; because an npm install was present here the
+  script used was **`migrate.sh`** (`install.sh` detects npm and exits by
+  design).  It refuses to run while any `claude` process is alive, so a
+  Claude Code session **cannot upgrade itself** — the user runs it from a
+  plain Termux shell.  `upgrade-claude-termux-prompt.md` in this repo is
+  the debugged prompt that drove that migration; keep it as the recipe if
+  the device ever has to be redone.
+- What is on disk now:
+  - `$PREFIX/bin/claude` — a ~10 KB **bash wrapper** (same path the npm
+    shim used), with `~/.local/bin/claude` symlinked to it.
+  - `~/.local/share/claude/versions/<version>` — the real binaries
+    (~320 MB each), plus `.verified`, `.blocklist`, `.last-update-check`.
+    N−1 are kept for rollback.
+  - glibc side: `glibc-repo`, `glibc-runner`, `patchelf-glibc` from the
+    termux-glibc apt repo (`$PREFIX/etc/apt/sources.list.d/glibc.list`);
+    the loader is `$PREFIX/glibc/lib/ld-linux-aarch64.so.1`.
+  - `~/claude-migration-backup-<timestamp>/` — migrate.sh's backup.
+    `~/.claude` and `~/.claude.json` carried over untouched (auth intact).
+- The wrapper **self-updates**: at most once per 24 h it asks the npm
+  registry for the latest version number, downloads that binary from
+  `downloads.claude.ai`, verifies SHA256 against the release
+  `manifest.json`, patchelfs it, and smoke-tests it with `--init-only`
+  before promoting it.  A binary that dies on a fatal signal is
+  blocklisted and the previous version keeps running.  Nothing here needs
+  a manual upgrade step; `claude --update-now` forces a check.
+- **`LD_PRELOAD` is cleared for Claude Code and everything it spawns.**
+  The wrapper does this deliberately (line ~222) — Termux's
+  `libtermux-exec-ld-preload.so` is a bionic library and must not be
+  preloaded into a glibc process.  The side effect is that termux-exec's
+  shebang rewriting is inactive inside a Claude session, so
+  `#!/usr/bin/env bash|python3` scripts fail with *"/usr/bin/env: bad
+  interpreter"*.  Verified by walking `/proc/*/environ` up the process
+  tree: the plain Termux login shell still has `LD_PRELOAD` set, only
+  claude's descendants don't.  So this is **not** a device-wide
+  regression — env shebangs still work when the user runs them by hand.
+  Practical rule for a Claude session on this tablet: invoke
+  `tools/otf2ttf.py` and `tools/embolden.py` as `python3 tools/...`, and
+  any `#!/usr/bin/env bash` script as `bash script.sh`.  Repo scripts
+  that already use the full `#!/data/data/com.termux/files/usr/bin/…`
+  shebang (`install.sh`, `bin/latex-scratch`, `bin/notes-init`,
+  `bin/latex-preview-server`) are unaffected — prefer that form for new
+  scripts meant to run here.
+- Claude Code's own DNS lookups are pinned to 8.8.8.8/8.8.4.4 by a
+  `BUN_OPTIONS=--preload …/setdns.js` the wrapper injects.  The system
+  resolver is untouched, but those lookups bypass a VPN or Pi-hole.
+- If the patched binary ever segfaults or is SIGKILLed by the kernel's
+  seccomp filter, the fallback is a `proot-distro` Ubuntu (~2 GB) running
+  the normal `claude.ai/install.sh`.  Not needed so far.
+
+[cca]: https://github.com/ferrumclaudepilgrim/claude-code-android
+
+## gptel / LLM chat (laptop + native Android Emacs)
 
 - `core/flow-gptel.el` (module, C-c g prefix) +
   `core/gptel-claude-code.el` (our own gptel backend library, kept
@@ -315,17 +376,54 @@ code alone.
   and `gptel-claude-code-fixture.jsonl` beside it).  gptel itself comes
   from **MELPA**; the backend shells out to the local `claude` CLI in
   headless mode (subscription auth, no API keys, one `claude -p`
-  process per request, stateless full-transcript replay).  Only the
-  laptop profile loads the module — the tablets have no claude CLI.
+  process per request, stateless full-transcript replay).
+- **Loaded by `laptop-emacs/` and `android-emacs/`** — the latter since
+  2026-08-14, when the Termux migration finally put a working `claude`
+  CLI on the Boox.  `termux-emacs/` does not load it (that profile is
+  the minimal tty one).  Reachability across the app boundary is not a
+  problem: `android-emacs/early-init.el` + `init.el` already put
+  `/data/data/com.termux/files/usr/bin` on `exec-path` and `PATH` (for
+  pdflatex/gs/tlmgr), and the shared UID makes another app's binary
+  executable, so `executable-find` — what the backend uses — resolves it.
+- **`flow-claude-config-dir` is what makes it work on Android**, and it
+  is not optional.  Emacs's HOME there is the app's private dir, which
+  has no `.claude`, while the CLI's login lives in Termux's `~/.claude`.
+  Symptom without it: the CLI launches fine and *every* request fails
+  with `Not logged in · Please run /login` — it looks like an auth
+  problem, it is a HOME problem.  Measured on the device: a foreign HOME
+  reproduces it exactly, and `CLAUDE_CONFIG_DIR` pointed at the Termux
+  `~/.claude` fixes it with nothing else changed.  The knob lives in
+  `core/flow-boot.el`, is set by the android profile, and `flow-gptel`
+  turns it into a `setenv` at load (global is safe — nothing else reads
+  that variable).  Exactly the same shape as `flow-deadlines-git-home`,
+  which solves the same HOME mismatch for git's ssh keys; if a third
+  subprocess ever needs Termux's home, follow that pattern rather than
+  setting HOME wholesale.
 - The backend replaces gptel's transport via advice on
   `gptel-curl-get-response`/`gptel--url-get-response` and reuses
   internal contracts (callback symbols, FSM transitions).  Verified
-  against gptel-20260703.  After `M-x package-refresh-contents` +
-  gptel upgrade, run the ERT suite first, from the repo root:
+  against gptel-20260703, and again against **gptel-20260813.2132** on
+  2026-08-14 (17/17 including the four live e2e, run with the Android
+  HOME + `CLAUDE_CONFIG_DIR` to rehearse the tablet).  After
+  `M-x package-refresh-contents` + gptel upgrade, run the ERT suite
+  first, from the repo root:
   `emacs -Q --batch --eval '(package-initialize)' -L core -l
   gptel-claude-code-tests.el -f ert-run-tests-batch-and-exit`
   (tests the installed elpa gptel; live e2e adds
   `GPTEL_CLAUDE_LIVE=1`, costs quota).
+- **Running that suite from inside a Claude Code session on the Boox
+  needs `env -u BUN_OPTIONS`.**  The wrapper exports
+  `BUN_OPTIONS=--preload <relative>/setdns.js` computed against the cwd
+  it was launched from, and re-appends whatever it inherits; a nested
+  `claude` started in a different directory (the suite runs in a scratch
+  temp dir) is handed that stale relative path and dies instantly with
+  `preload not found "…/setdns.js"`, surfacing as FSM state `ERRS` and
+  `:status "Claude Code startup error"`.  Nothing is wrong with the
+  backend when this happens — it cost one wrong-premise "fix" already.
+  Emacs launched from the Android launcher has no `BUN_OPTIONS`, so the
+  real path is unaffected.  Note also that Emacs sets the child's `PWD`
+  from `default-directory` itself (callproc.c); do not add code to do
+  that.
 - Streaming requires `gptel-use-curl` non-nil (the default) even
   though no curl runs — gptel's streaming gate consults it.  Don't
   "clean up" that variable for this backend.
@@ -403,6 +501,12 @@ code alone.
   the tablet's live symlinks point at those exact paths, and the local
   clone there is still named `boox-latex-setup` (the GitHub repo was
   renamed to `flow-emacs`; the directory name on a device is free).
+- **Don't `npm install`/`npm update`/`npm uninstall`
+  `@anthropic-ai/claude-code` on the Boox.** The tablet's CLI is the
+  patched native binary; npm ≥ 2.1.113 installs a glibc ELF that bionic
+  cannot exec, and it would land on the same `$PREFIX/bin/claude` path,
+  overwriting the wrapper. Upgrades are automatic — see the Claude Code
+  section above.
 - Don't put device conditionals inside core modules — add a knob in
   `core/flow-boot.el` and set it from the profiles instead.
 - **Never byte-compile `init.el`/`early-init.el` at their live
