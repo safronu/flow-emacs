@@ -41,6 +41,26 @@
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(menu-bar-lines . 0) default-frame-alist)
 
+;; No Android system bars either — the clock/battery/wifi status bar at
+;; the top and the navigation bar.  The port maps the standard
+;; `fullscreen' frame parameter onto them: `fullboth' (i.e.
+;; FULLSCREEN_BOTH) makes `android_fullscreen_hook' in androidterm.c
+;; call `EmacsActivity.syncFullscreenWith', which on Android 11+ hides
+;; `WindowInsets.Type.statusBars' | `navigationBars' via the window
+;; insets controller.  The bars stay reachable: the behaviour is
+;; BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE, so an edge swipe brings them
+;; back temporarily.  `F11' (`toggle-frame-fullscreen') flips it at
+;; runtime.
+;;
+;; Two caveats worth knowing before "fixing" anything here:
+;; the port normalizes the parameter's value — after the frame is up,
+;; `(frame-parameter nil 'fullscreen)' reads back as `fullscreen' (or
+;; `maximized' if the request failed), never `fullboth'; and only
+;; top-level frames get this — child frames are forced out of
+;; fullscreen on creation.  This is the sole place the default is set;
+;; the laptop profile deliberately doesn't do it (a tiling/WM job there).
+(push '(fullscreen . fullboth) default-frame-alist)
+
 ;; Termux's pdflatex was compiled with a hardcoded TEXMFROOT of `2026.0'
 ;; while the actual install lives at `2026'.  A login shell fixes this by
 ;; sourcing /etc/profile.d/texlive.sh; Android Emacs doesn't, so we reproduce
