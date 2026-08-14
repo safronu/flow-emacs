@@ -1,9 +1,9 @@
 ;;; latex-font-sync-tests.el --- ERT tests for latex-font-sync -*- lexical-binding: t; -*-
 ;;
-;; Run from Termux:
+;; Run from the repo root:
 ;;   emacs --batch \
 ;;     --eval "(progn (require 'package) (package-initialize))" \
-;;     -L /data/data/org.gnu.emacs/files/.emacs.d \
+;;     -L core/latex-font-sync \
 ;;     -l latex-font-sync -l latex-font-sync-tests \
 ;;     -f ert-run-tests-batch-and-exit
 ;;

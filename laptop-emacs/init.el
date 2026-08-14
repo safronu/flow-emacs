@@ -69,7 +69,7 @@
 ;; Latin Modern families are installed system-wide by TeX Live on this
 ;; machine (fontconfig finds their OTFs — no bundled TTFs needed, that
 ;; dance is Android-only).
-(flow-load "latex-font-sync")
+(flow-load "latex-font-sync/latex-font-sync")
 (latex-font-sync-mode 1)
 
 ;; Display-math air on top of the synced font: full-line formulas get

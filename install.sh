@@ -259,7 +259,7 @@ fi
 log "Setting up ~/latex-scratch"
 mkdir -p "${HOME_}/latex-scratch"
 link "${REPO}/scratch/test.tex"      "${HOME_}/latex-scratch/test.tex"
-link "${REPO}/scratch/CHEATSHEET.md" "${HOME_}/latex-scratch/README.md"
+link "${REPO}/CHEATSHEET.md"         "${HOME_}/latex-scratch/README.md"
 
 log "Done."
 cat <<EOF
@@ -272,5 +272,5 @@ Next steps (manual):
      'C-c p p' to preview inline.
   3. Telegram (optional): 'M-x telega-server-build' once (links against
      the TDLib installed above), then 'M-x telega' and sign in.
-  4. See scratch/CHEATSHEET.md for keys.
+  4. See CHEATSHEET.md for keys.
 EOF

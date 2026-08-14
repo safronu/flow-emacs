@@ -136,8 +136,9 @@ every live test failing in ~0.2s. That is the harness, not the backend.
   2.1.170/2.1.219; use `sonnet`/`opus`/`haiku`. Soft caveats there:
   large-output truncation (fixed 2.1.208/214) degrades to missing token counts
   or a clean parse error; aborting mid-Bash-tool may orphan processes (fixed
-  2.1.212). The migration itself is documented in CLAUDE.md, with the prompt
-  that drove it in the repo-root `upgrade-claude-termux-prompt.md`.
+  2.1.212). The migration itself is documented in CLAUDE.md; the prompt that
+  drove it (`upgrade-claude-termux-prompt.md`) was deleted on 2026-08-15 and
+  lives in git history.
 
 ## Known gotchas (learned the hard way)
 

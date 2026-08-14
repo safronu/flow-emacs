@@ -97,8 +97,8 @@ bash install.sh
 5. Symlinks every config file from this repo to its live location
    (`~/.bashrc`, `~/.config/emacs/…`, `/data/data/org.gnu.emacs/files/.emacs.d/…`,
    `~/.local/bin/…`).
-6. Creates `~/latex-scratch/` and symlinks `test.tex` + `CHEATSHEET.md`
-   in from `scratch/`.
+6. Creates `~/latex-scratch/` and symlinks in `scratch/test.tex` plus the
+   repo-root `CHEATSHEET.md` (as its `README.md`).
 7. Creates convenience symlinks so the Android Emacs app can reach Termux
    files: `~/latex-scratch` and `~/termux-home` in its HOME.
 

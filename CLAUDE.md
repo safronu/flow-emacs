@@ -182,7 +182,8 @@ code alone.
   #'reveal-mode)` line is essentially a no-op for folds; keep or delete
   as you like.
 - `latex-font-sync-mode` is ON in the android and laptop profiles
-  (enabled in each profile's init.el; `core/latex-font-sync.el`).  It
+  (enabled in each profile's init.el;
+  `core/latex-font-sync/latex-font-sync.el`).  It
   remaps the buffer's default `:family` to a doc-matching TTF.  A
   non-obvious side effect: without this remap, Android's sfnt-android
   font backend doesn't pick a bold variant for TeX-fold overlay display
@@ -244,7 +245,9 @@ code alone.
   from TeX Live's OTF with `tools/otf2ttf.py`.  The TeX Gyre demis are
   SYNTHESIZED (`tools/embolden.py`: union of outline and its 20-unit
   stroke) — those families ship no real demi.
-- `*.ttf` is gitignored — new font files need `git add -f`.
+- `*.ttf` files are tracked normally (the blanket `*.ttf` gitignore was
+  removed on 2026-08-15 — it only created a `git add -f` trap that had
+  already silently dropped two probe fonts).
 - **Deploying a new font file to the tablet takes THREE steps**: git
   pull, `bash install.sh` (creates the symlink — a pull alone updates
   only existing links' targets), and a FORCE-STOP of the Emacs app
@@ -321,9 +324,9 @@ code alone.
   script used was **`migrate.sh`** (`install.sh` detects npm and exits by
   design).  It refuses to run while any `claude` process is alive, so a
   Claude Code session **cannot upgrade itself** — the user runs it from a
-  plain Termux shell.  `upgrade-claude-termux-prompt.md` in this repo is
-  the debugged prompt that drove that migration; keep it as the recipe if
-  the device ever has to be redone.
+  plain Termux shell.  The debugged prompt that drove that migration
+  lived in `upgrade-claude-termux-prompt.md` (deleted 2026-08-15);
+  recover it from git history if the device ever has to be redone.
 - What is on disk now:
   - `$PREFIX/bin/claude` — a ~10 KB **bash wrapper** (same path the npm
     shim used), with `~/.local/bin/claude` symlinked to it.

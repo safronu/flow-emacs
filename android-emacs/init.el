@@ -108,7 +108,7 @@
 ;; All bundled TTFs have been validated in-frame — a malformed TTF can
 ;; hard-crash the app's font backend on face-remap.
 
-(flow-load "latex-font-sync")
+(flow-load "latex-font-sync/latex-font-sync")
 
 ;; Weight ladder for e-ink: regular LM/TeX Gyre hairlines wash out on
 ;; the 16-gray panel, bold is squat.  Two intermediate grades are

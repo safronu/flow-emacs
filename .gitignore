@@ -1,4 +1,3 @@
-*.ttf
 *.elc
 *.aux
 *.log
@@ -16,4 +15,4 @@ auto/
 preview/
 .DS_Store
 .#*
-scratch/
+.agent-shell/

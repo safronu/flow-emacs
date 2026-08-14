@@ -59,6 +59,7 @@ flow-emacs/
 ├── README.md                       This file — architecture & rationale
 ├── DEPLOY.md                       Step-by-step install on a fresh Boox
 ├── CLAUDE.md                       Context primer for Claude Code sessions
+├── CHEATSHEET.md                   One-page keys reference
 ├── install.sh                      Idempotent deploy script (Boox/Termux)
 ├── install-laptop.sh               Idempotent deploy script (laptop)
 │
@@ -69,9 +70,14 @@ flow-emacs/
 │   ├── flow-preview.el             Inline previews (.tex + .org) — GUI only
 │   ├── flow-live-pdf.el            C-c p l: fresh compiled PDF, ace-window placed
 │   ├── flow-markdown.el            markdown-mode + C-c p p HTML preview
+│   ├── flow-page.el                Display-math air around \[...\] blocks
+│   ├── flow-gptel.el               C-c g: LLM chat via the Claude Code CLI
+│   ├── flow-agent-shell.el         C-c a: agentic coding over ACP
 │   ├── flow-deadlines.el           Guarded loader for the private repo
-│   ├── latex-font-sync.el          Buffer :family follows LaTeX font package
-│   ├── latex-font-sync-tests.el    ERT tests for the above
+│   ├── gptel-claude-code/          gptel backend running claude -p (+ tests, docs)
+│   ├── latex-font-sync/            Buffer :family follows LaTeX font package
+│   │   ├── latex-font-sync.el      The mode itself
+│   │   └── latex-font-sync-tests.el  ERT tests
 │   └── snippets/latex-mode/        mm, dm, sr, sb, ee — one copy for all
 │
 ├── android-emacs/                  Profile: native Android Emacs (org.gnu.emacs)
@@ -96,7 +102,6 @@ flow-emacs/
 │   └── latex-preview-server        HTTP preview server (Python)
 │
 └── scratch/                        Playground
-    ├── CHEATSHEET.md               One-page keys reference
     └── test.tex                    Sanity test file with math
 ```
 
@@ -259,7 +264,7 @@ See [`DEPLOY.md`](./DEPLOY.md). The short version:
   `C-c p b` to see it in the browser.
 - Deadlines: `C-c d d` the live agenda, `C-c d c` to capture, `C-c d s` to
   sync. Present only where the private `deadlines` repo is cloned.
-- Full cheatsheet: [`scratch/CHEATSHEET.md`](./scratch/CHEATSHEET.md).
+- Full cheatsheet: [`CHEATSHEET.md`](./CHEATSHEET.md).
 
 ## Troubleshooting
 
