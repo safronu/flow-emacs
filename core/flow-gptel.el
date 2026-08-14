@@ -1,8 +1,8 @@
 ;;; flow-gptel.el --- LLM chat: gptel with the Claude Code CLI backend -*- lexical-binding: t; -*-
 ;;
 ;; gptel (MELPA) provides the chat UI; the model behind it is the local
-;; `claude' CLI in headless mode, via `core/gptel-claude-code.el' — our
-;; own backend library, kept in this repo like `latex-font-sync.el'.
+;; `claude' CLI in headless mode, via our own backend library in
+;; `core/gptel-claude-code/' (gptel-claude-code.el + tests + docs).
 ;; No API keys anywhere: the CLI's own subscription login is the auth.
 ;; On a machine without the `claude' executable the module still loads;
 ;; a request just fails with a clear "cannot find executable" error.
@@ -28,8 +28,9 @@
 ;; - The backend hooks gptel's transport via advice on
 ;;   `gptel-curl-get-response' / `gptel--url-get-response' and reuses
 ;;   several internal contracts.  Verified against gptel-20260703; after
-;;   upgrading the gptel package, run `core/gptel-claude-code-tests.el'
-;;   (command in its Commentary) before trusting it.
+;;   upgrading the gptel package, run the tests in
+;;   `core/gptel-claude-code/' (command in the tests' Commentary)
+;;   before trusting it.
 
 ;;; Code:
 
@@ -59,7 +60,7 @@
   (keymap-set flow-gptel-map "f" #'gptel-add-file)
   (keymap-set flow-gptel-map "k" #'gptel-abort)
   :config
-  (flow-load "gptel-claude-code")
+  (flow-load "gptel-claude-code/gptel-claude-code")
   (setq-default gptel-backend (gptel-make-claude-code "Claude-Code")
                 gptel-model 'sonnet)
   (gptel-make-claude-code "Claude-Agent"

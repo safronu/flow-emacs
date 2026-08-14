@@ -1,0 +1,477 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>gptel-requirements.html</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { max-width: 42em; margin: 2em auto; padding: 0 1em;
+         font-family: 'TeX Gyre Pagella', Palatino, Georgia, serif;
+         line-height: 1.5; }
+  h1, h2, h3, h4 { line-height: 1.2; margin-top: 1.4em; }
+  code, pre, kbd { font-family: 'JetBrains Mono', monospace; font-size: 0.9em; }
+  pre { background: #f4f4f4; padding: 0.6em 0.8em; overflow-x: auto; }
+  blockquote { border-left: 3px solid #bbb; margin-left: 0;
+               padding-left: 1em; color: #444; }
+  table { border-collapse: collapse; }
+  th, td { border: 1px solid #bbb; padding: 0.3em 0.6em; }
+  img { max-width: 100%; }
+</style>
+
+</head>
+
+<body>
+
+<h1 id="gptel-requirements-specification">gptel — Requirements Specification</h1>
+<p><strong>Product</strong>: an LLM client for Emacs (“gptel”), supporting many providers, usable from any buffer. <strong>Audience</strong>: experienced Emacs Lisp developers who will implement the product from scratch. This document defines <em>what</em> to build; the companion <code>gptel-architecture.md</code> defines <em>how</em>. <strong>Baseline studied</strong>: gptel v0.9.9.5 (Emacs ≥ 27.1, Transient ≥ 0.7.8).</p>
+<hr />
+<h2 id="product-vision-and-design-principles">1. Product vision and design principles</h2>
+<p>The product is a Large Language Model chat client that works “in the spirit of Emacs: available at any time and uniformly in any buffer.” These principles are normative — they resolve design disputes:</p>
+<ul>
+<li><strong>P1 — Free-form interaction.</strong> Unlike clients that prescribe an interaction format (a comint shell, org-babel blocks), the user queries the model using any text in any buffer and redirects the response anywhere. A dedicated chat buffer exists but is <em>only a convenience</em>, never a requirement.</li>
+<li><strong>P2 — The buffer is the conversation.</strong> Conversation state (who said what) is carried by the buffer text itself plus invisible metadata (text properties), never by required syntactic markers. Users may freely edit both their prompts and the LLM’s past responses; the edited text is what gets sent.</li>
+<li><strong>P3 — Minimally annoying.</strong> The client never moves the user’s cursor, never steals focus, and never blocks Emacs. Auto-scroll and cursor-follow behaviors are opt-in.</li>
+<li><strong>P4 — Uniform across providers.</strong> One user-facing surface over 25+ LLM providers; provider differences are absorbed by a backend abstraction.</li>
+<li><strong>P5 — Transparent and programmable.</strong> The user can inspect and edit the exact request payload before sending, view raw logs, and build custom workflows on a public request API.</li>
+<li><strong>P6 — No hard external dependencies.</strong> Works with built-in Emacs facilities alone; uses <code>curl</code> opportunistically for streaming and robustness.</li>
+</ul>
+<hr />
+<h2 id="glossary">2. Glossary</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Backend</strong></td>
+<td>A registered configuration for one provider endpoint (name, host, auth, models, wire dialect).</td>
+</tr>
+<tr class="even">
+<td><strong>Model</strong></td>
+<td>A provider model identifier plus metadata (capabilities, context window, costs, MIME types).</td>
+</tr>
+<tr class="odd">
+<td><strong>Chat buffer</strong></td>
+<td>A buffer with the client’s minor mode enabled; gets prefixes, persistence, header-line UI.</td>
+</tr>
+<tr class="even">
+<td><strong>Directive / system prompt</strong></td>
+<td>The system message; may be a string, a function, or a string list (system message + canned conversation template).</td>
+</tr>
+<tr class="odd">
+<td><strong>Context</strong></td>
+<td>Additional material (regions/buffers/files) attached to every request, distinct from the conversation text.</td>
+</tr>
+<tr class="even">
+<td><strong>Tool</strong></td>
+<td>A user-defined elisp function with a JSON-schema arg description that the LLM can call.</td>
+</tr>
+<tr class="odd">
+<td><strong>Preset</strong></td>
+<td>A named bundle of option values applied together.</td>
+</tr>
+<tr class="even">
+<td><strong>Scope</strong></td>
+<td>Where an option change applies: globally, buffer-locally, or for the next request only (“oneshot”).</td>
+</tr>
+<tr class="odd">
+<td><strong>Dry-run</strong></td>
+<td>Building a request fully without sending it, for inspection/editing/resumption.</td>
+</tr>
+<tr class="even">
+<td><strong>Reasoning</strong></td>
+<td>“Thinking” content some models emit before their answer.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="functional-requirements">3. Functional requirements</h2>
+<p>Requirement IDs are stable; the architecture document and test cases reference them.</p>
+<h3 id="sending-queries-fr-send">3.1 Sending queries (FR-SEND)</h3>
+<ul>
+<li><strong>FR-SEND-1</strong> A single command (<code>gptel-send</code>) usable in <em>any</em> buffer sends the buffer text from the beginning up to point — extended to the end of the word at point — as the prompt. If a region is active, only the region is sent.</li>
+<li><strong>FR-SEND-2</strong> The response is inserted asynchronously below the send position; Emacs remains fully usable during the request. Typing below the response and sending again continues the conversation (multi-turn).</li>
+<li><strong>FR-SEND-3</strong> Past LLM responses within the sent text are recognized (see FR-TRACK) and encoded as assistant turns; everything else is user turns; the whole buffer parse yields a faithful multi-turn conversation including tool-call turns.</li>
+<li><strong>FR-SEND-4</strong> Multiple requests may be in flight simultaneously, in the same or different buffers, without interference.</li>
+<li><strong>FR-SEND-5</strong> An abort command stops the active request in the current buffer; partial output stays; the state is reported. Callbacks observe a distinct <code>abort</code> signal.</li>
+<li><strong>FR-SEND-6</strong> A configurable limit on the number of prior conversation turns included with each request (<code>N</code> most recent user/assistant pairs; nil = all).</li>
+<li><strong>FR-SEND-7</strong> On failure (HTTP error, connection error, malformed response), a human-readable status is surfaced (header line/echo area) including the HTTP status and provider error message; no partial garbage is inserted.</li>
+<li><strong>FR-SEND-8</strong> Empty responses are reported as such (" Empty response") without inserting separators.</li>
+</ul>
+<h3 id="response-tracking-and-demarcation-fr-track">3.2 Response tracking and demarcation (FR-TRACK)</h3>
+<ul>
+<li><strong>FR-TRACK-1</strong> LLM responses are watermarked with an invisible, copy-surviving mechanism (text properties), <strong>not</strong> by prefixes, headings, or any syntax. Copying response text to another buffer preserves its identity as a response.</li>
+<li><strong>FR-TRACK-2</strong> Four classes of buffer text exist: user prompt (default), <code>response</code> (LLM output), <code>ignore</code> (visible but never sent — e.g. reasoning fences, block delimiters), and <code>tool</code> records keyed by a call id (re-sent as structured tool messages).</li>
+<li><strong>FR-TRACK-3</strong> Edits typed inside or immediately before a response extend the response (property stickiness); text typed after the end of a response, and at buffer end, is user text.</li>
+<li><strong>FR-TRACK-4</strong> In non-chat buffers, tracking can be disabled entirely (<code>gptel-track-response</code> nil): all text is then user input. This knob has no effect in chat buffers.</li>
+<li><strong>FR-TRACK-5</strong> Optional cosmetic prefixes before prompts and responses, configurable per major mode (<code>gptel-prompt-prefix-alist</code>, <code>gptel-response-prefix-alist</code>); they are inserted in chat buffers only, stripped before sending, and have no semantic role.</li>
+<li><strong>FR-TRACK-6</strong> Navigation commands move point to the beginning/end of the response at or near point, with repeat counts.</li>
+<li><strong>FR-TRACK-7</strong> An optional highlight minor mode (usable in any buffer) visually marks responses, ignored text, and tool blocks by any combination of: background face, fringe bitmap, or a margin bar (margin and fringe mutually exclusive).</li>
+</ul>
+<h3 id="dedicated-chat-buffers-fr-chat">3.3 Dedicated chat buffers (FR-CHAT)</h3>
+<ul>
+<li><strong>FR-CHAT-1</strong> A command (<code>gptel</code>) creates or switches to a named chat session buffer; prompts for name (default derived from the backend); prefix arg forces a new session; an active region becomes the initial prompt. If the backend’s API key cannot be resolved, prompt for it (password-style).</li>
+<li><strong>FR-CHAT-2</strong> Chat buffers use a configurable major mode (<code>gptel-default-mode</code>: markdown if available, else text mode; org selectable) plus a minor mode (<code>gptel-mode</code>, keybinding <code>C-c RET</code> = send). The minor mode refuses to enable in unsupported major modes (must derive from org/markdown/text).</li>
+<li><strong>FR-CHAT-3</strong> Any number of simultaneous sessions, each with independent buffer-local settings (backend, model, system prompt, tools, temperature, …).</li>
+<li><strong>FR-CHAT-4</strong> A header-line UI (toggleable to mode-line + echo) shows: backend name; request status (Ready / Waiting / Typing / Calling tool / Run tools? / errors / Abort / Empty response — status is clickable and opens a request diagnostic); and right-aligned clickable indicators: token usage (toggles last-request vs session-cumulative), tool count (opens tool menu), media toggle (only for media-capable models), context summary (opens context inspector), system-prompt preview (opens directive menu), model name (opens main menu).</li>
+<li><strong>FR-CHAT-5</strong> Token usage from provider responses is accumulated and displayed compactly (e.g. <code>[12k↑, C4.1k↑ 890↓]</code> with cached-token annotation), both per-request and per-session.</li>
+<li><strong>FR-CHAT-6</strong> In markdown chat buffers, TAB on a code-fence line folds/unfolds the block (nested fences handled by parity).</li>
+</ul>
+<h3 id="saving-and-restoring-chats-fr-persist">3.4 Saving and restoring chats (FR-PERSIST)</h3>
+<ul>
+<li><strong>FR-PERSIST-1</strong> Saving a chat buffer to file persists the full conversation state: response/ignore/tool boundary positions, model, backend name, system prompt, tool names, preset name, temperature, max tokens, turn limit.</li>
+<li><strong>FR-PERSIST-2</strong> In markdown/text files, persistence uses file-local variables; in Org files, Org properties at the top of the file (and optionally per heading). All persisted variables must be marked safe (no confirmation prompts on open).</li>
+<li><strong>FR-PERSIST-3</strong> Opening a saved file and enabling the minor mode restores everything: text properties re-applied, backend/model/tools/preset resolved by name with graceful warnings for anything no longer defined (chat remains usable).</li>
+<li><strong>FR-PERSIST-4</strong> When a preset is active, only settings that <em>differ</em> from the preset are written (minimal files; presets can evolve).</li>
+<li><strong>FR-PERSIST-5</strong> A legacy bounds format (plain list of response ranges) must restore correctly.</li>
+<li><strong>FR-PERSIST-6</strong> A pre-save hook lets users customize what is persisted.</li>
+</ul>
+<h3 id="backends-models-keys-fr-backend">3.5 Backends, models, keys (FR-BACKEND)</h3>
+<ul>
+<li><strong>FR-BACKEND-1</strong> Constructor functions register named backends for: OpenAI (and any OpenAI-compatible server), OpenAI Responses API, OpenAI via ChatGPT-subscription OAuth, Azure OpenAI, Anthropic, Google Gemini, Ollama, Kagi (FastGPT + Summarizer), AWS Bedrock (Converse), GitHub Copilot Chat, PrivateGPT, Perplexity, DeepSeek, xAI — with the OpenAI-compatible constructor additionally covering GPT4All, Groq, Mistral, OpenRouter, together.ai, Anyscale, Cerebras, Novita, Moonshot, llama.cpp, Open WebUI, etc.</li>
+<li><strong>FR-BACKEND-2</strong> Each constructor accepts at minimum: display name, host, protocol, endpoint path, API key (string / variable / function), model list, streaming flag, extra headers (alist or function), extra request params, extra curl args.</li>
+<li><strong>FR-BACKEND-3</strong> Models are declared with metadata: description, capabilities (media, tool-use, JSON output, URL input, no-system-message, caching, reasoning, audio, video…), supported MIME types, context window size, input/output costs, cutoff date, per-model request params. Capabilities gate features (e.g. media sending requires a media-capable model; system message suppressed for <code>nosystem</code> models).</li>
+<li><strong>FR-BACKEND-4</strong> Model + backend selection UI presents all registered models as <code>Backend:model</code> with metadata annotations (description, caps, context window, costs, cutoff).</li>
+<li><strong>FR-BACKEND-5</strong> API keys resolve through a chain: literal string / user function / Emacs auth-source lookup keyed by backend host with user “apikey”. Function-valued keys are called per request; trailing whitespace is trimmed.</li>
+<li><strong>FR-BACKEND-6</strong> OAuth backends (GitHub Copilot; OpenAI/Codex subscription) implement device-code and/or PKCE authorization flows with token persistence, automatic refresh, and explicit login commands. Auth happens lazily and automatically on first request.</li>
+<li><strong>FR-BACKEND-7</strong> The default backend can be configured declaratively (custom setter accepting a type+plist form) as well as programmatically.</li>
+<li><strong>FR-BACKEND-8</strong> Per-request parameter layering: global extra params &lt; backend params &lt; model params (later wins).</li>
+</ul>
+<h3 id="transport-fr-net">3.6 Transport (FR-NET)</h3>
+<ul>
+<li><strong>FR-NET-1</strong> Requests use <code>curl</code> when available (configurable: t / nil / explicit path), falling back to Emacs’ built-in <code>url-retrieve</code> with <strong>no external dependency</strong>.</li>
+<li><strong>FR-NET-2</strong> Streaming (incremental insertion of the response as it arrives) is supported only on the curl path and can be toggled globally/per-backend/per-model. Without curl, requests are still asynchronous but deliver the full response at once.</li>
+<li><strong>FR-NET-3</strong> Proxy support (curl <code>--proxy</code>), user-configurable extra curl arguments, redirect following, compressed transfer, a stall timeout, and no limit on payload size (payload passed via stdin, not argv — also keeps keys out of the process list).</li>
+<li><strong>FR-NET-4</strong> Multiple parallel curl processes must be demultiplexed reliably (per-request token protocol; see architecture).</li>
+<li><strong>FR-NET-5</strong> Non-UTF-8 (binary) response streams must be supported for backends that need them (AWS Bedrock event stream).</li>
+<li><strong>FR-NET-6</strong> Errors distinguish: connection-level failure (curl exit code), HTTP error with parseable provider error body, malformed JSON, unparseable response. No automatic retries.</li>
+</ul>
+<h3 id="options-menu-and-scoping-fr-menu">3.7 Options menu and scoping (FR-MENU)</h3>
+<ul>
+<li><strong>FR-MENU-1</strong> A transient menu (<code>gptel-menu</code>, also <code>C-u gptel-send</code>) is the central control surface. It must show current state live and expose: model/backend selection; system prompt selection/editing; a one-shot “additional instruction” for the next request; context add/inspect/remove; tool selection; response length (max tokens); temperature; turn limit; context placement; reasoning handling; response tracking; media toggle; input redirection; output redirection; rewrite entry; response tweaks; dry-run and logging (behind an “expert commands” flag).</li>
+<li><strong>FR-MENU-2</strong> <strong>Scope switch</strong> (<code>=</code> key, shared across all menus): every option set from a menu applies globally, buffer-locally, or <strong>oneshot</strong> (next request only, after which the previous value is restored — restore must survive the request machinery’s own let-bindings). The scope choice itself is persistent.</li>
+<li><strong>FR-MENU-3</strong> <strong>Input redirection</strong>: prompt may be read from the minibuffer (with the option to include/exclude the active region, an “edit in buffer” escape hatch, history, and preset-cookie completion) or from the kill-ring (prefix arg selects which kill). Mutually exclusive with each other.</li>
+<li><strong>FR-MENU-4</strong> <strong>Output redirection</strong>: response to the echo area, to the kill-ring (on error, partial output still copied), to an arbitrary buffer, or to a gptel session buffer (existing or newly created — the prompt text is inserted there, fenced as a code block in the <em>target’s</em> markup when source and target modes differ). “Respond in place” replaces the prompt with the response (region or trailing prompt text is killed; read-only text is left with a message; killed text is preserved as response history when possible). Streaming is disabled for echo-area and kill-ring destinations.</li>
+<li><strong>FR-MENU-5</strong> The send button’s description is a live plain-English sentence describing exactly what will be sent, from where, with how many context sources, and where the response goes.</li>
+<li><strong>FR-MENU-6</strong> Redirection options are per-invocation but can be persisted for the session (<code>C-x C-s</code>) and cycled through saved combinations.</li>
+<li><strong>FR-MENU-7</strong> System prompt menu: pick from a user-configurable alist of named directives (string / function / string-list template forms), edit the current directive in a dedicated buffer (with read-only example header, <code>C-c C-c</code>/<code>C-c C-k</code>), unset it, or pick-and-edit from a crowdsourced prompt collection (fetched over the network only with consent; cached; refreshed after 14 days). Dynamically-generated (function) directives require confirmation before editing their current value.</li>
+<li><strong>FR-MENU-8</strong> Tool menu: two-level category → tool selection with per-category toggle-all, selection state preserved for categories not currently displayed, confirm-tool-calls and include-results options, and a “continue pending tool calls” entry when a request is paused in the tool state.</li>
+<li><strong>FR-MENU-9</strong> Menu visibility adapts to state: expert-only entries, mode-gated entries, capability-gated entries (e.g. system-prompt column hidden for <code>nosystem</code> models with an explanatory header), state-gated entries (context/rewrite/tool-continue only when applicable).</li>
+<li><strong>FR-MENU-10</strong> Menus must work under evil-mode’s visual selections (region-gated entries appear correctly).</li>
+</ul>
+<h3 id="presets-fr-preset">3.8 Presets (FR-PRESET)</h3>
+<ul>
+<li><strong>FR-PRESET-1</strong> <code>gptel-make-preset</code> defines a named bundle of settings: special keys <code>:description</code>, <code>:parents</code> (inheritance, applied first), <code>:pre</code>/<code>:post</code> thunks; <code>:system</code> (string / directive-symbol / function), <code>:backend</code> (name or object), <code>:tools</code> (names or objects, deduped); any other <code>:foo</code> sets variable <code>gptel-foo</code> (or <code>gptel--foo</code>), with unknown keys warning.</li>
+<li><strong>FR-PRESET-2</strong> Values may be declarative modification specs: <code>:append</code>/<code>:prepend</code> (idempotent on strings), <code>:eval</code>, <code>:function</code> (old → new), <code>:merge</code>.</li>
+<li><strong>FR-PRESET-3</strong> Presets are applied from the menu at any scope, via elisp, via a scoped <code>gptel-with-preset</code> macro (let-binding, no leakage), or <strong>per-request via an <code>@preset-name</code> cookie</strong> anywhere in the final user turn of the prompt — the cookie is removed from the sent text and only the last user turn is scanned. In chat buffers, valid cookies are fontified and completed at point.</li>
+<li><strong>FR-PRESET-4</strong> A save-preset command snapshots current settings into a preset definition and copies the elisp form to the kill-ring. The menu displays the active preset and marks it (strike-through) if current state has drifted from it.</li>
+<li><strong>FR-PRESET-5</strong> A built-in <code>gptel-default</code> preset resets all options to defaults.</li>
+</ul>
+<h3 id="context-system-fr-ctx">3.9 Context system (FR-CTX)</h3>
+<ul>
+<li><strong>FR-CTX-1</strong> <code>gptel-add</code> (dwim): adds the active region as context (replacing overlapping previous context); toggles off the context at point; adds the whole buffer; in Dired adds marked files (directories recursively after confirmation); in ibuffer adds marked buffers; with negative prefix removes. <code>gptel-add-file</code> adds files/directories by path. A “yank to context” command adds the current kill (appending mode with prefix).</li>
+<li><strong>FR-CTX-2</strong> Context is <strong>live, not snapshots</strong>: buffers/regions/files are re-read at each request time. Region context follows buffer edits (overlay semantics) and disappears when its text is deleted. Killed buffers and deleted files are silently dropped at collection time.</li>
+<li><strong>FR-CTX-3</strong> Context entries support: whole buffers, buffer regions, files, file line-ranges and character-ranges, binary/media files (with MIME detection). Binary files require a media-capable model and a supported MIME; otherwise refused with a message. Images with misleading content encodings (ICC profiles) must still be detected as binary.</li>
+<li><strong>FR-CTX-4</strong> In version-controlled projects, gitignored files are skipped by default (with a message naming the escape hatch, <code>gptel-context-restrict-to-project-files</code>); remote files are always allowed.</li>
+<li><strong>FR-CTX-5</strong> Context is serialized per request into a structured string: each source gets a header (<code>In buffer X:</code> / <code>In file Y:</code>) and a fenced excerpt; sub-region excerpts get line-number markers and ellipses for discontinuities. The formatting function is replaceable and may be asynchronous.</li>
+<li><strong>FR-CTX-6</strong> Placement is configurable (<code>gptel-use-context</code>): prepended to the system message (default), injected into the last user prompt (before its text), or disabled. For <code>nosystem</code> models, system placement automatically falls back to user placement. Media context files are attached to the <em>first</em> user message (media can’t ride in system messages).</li>
+<li><strong>FR-CTX-7</strong> A context inspection buffer lists all context with previews (inline images for media), point-highlighting of the chunk under point, navigation (n/p), visiting the source at the corresponding position (RET), non-destructive deletion flagging (d) and batch confirm (C-c C-c) / quit (C-c C-k).</li>
+<li><strong>FR-CTX-8</strong> The transient menu shows a live context summary (regions/buffers/files counts).</li>
+</ul>
+<h3 id="media-multi-modal-input-fr-media">3.10 Media / multi-modal input (FR-MEDIA)</h3>
+<ul>
+<li><strong>FR-MEDIA-1</strong> With <code>gptel-track-media</code> enabled (global, buffer-local, or via the header-line/menu toggle) and a media-capable model, bracketed file/URL links in chat buffers (markdown: <code>[](path)</code>, <code>[desc](path)</code>, <code>&lt;url&gt;</code>; org: <code>[[file:…]]</code>, <code>[[attachment:…]]</code>, angle links) are parsed out of the prompt and sent as media parts (base64) or text-file parts. Plain unbracketed links are ignored.</li>
+<li><strong>FR-MEDIA-2</strong> Every link in the prompt region is annotated in-buffer: a “SEND” badge when it will be sent; a warning badge with a tooltip explaining why not (unsupported link type, failed user predicate, unreadable, MIME unsupported by model). Links inside responses are never annotated or followed.</li>
+<li><strong>FR-MEDIA-3</strong> A user predicate can restrict which links count (e.g. only standalone links on their own line); separate predicates for markdown and org.</li>
+<li><strong>FR-MEDIA-4</strong> URL (non-downloaded) media parts are allowed only for models with the <code>url</code> capability.</li>
+</ul>
+<h3 id="reasoning-content-fr-reason">3.11 Reasoning content (FR-REASON)</h3>
+<ul>
+<li><strong>FR-REASON-1</strong> Reasoning/thinking blocks in responses (delivered as separate API fields or inline <code>&lt;think&gt;</code> tags) are handled per <code>gptel-include-reasoning</code>: <code>ignore</code> (default — insert but mark as <code>ignore</code> so it is never re-sent), <code>t</code> (insert as normal response), <code>nil</code> (drop), or a buffer name (redirect there).</li>
+<li><strong>FR-REASON-2</strong> When inserted, reasoning is delimited as an org <code>#+begin_reasoning</code> block or a markdown <code>```reasoning</code> fence, auto-folded after insertion; delimiter lines are themselves marked <code>ignore</code>.</li>
+<li><strong>FR-REASON-3</strong> Works identically for streaming (chunk-wise, with a reasoning-block state machine assuming reasoning precedes the answer) and non-streaming responses.</li>
+</ul>
+<h3 id="tool-use-fr-tool">3.12 Tool use (FR-TOOL)</h3>
+<ul>
+<li><strong>FR-TOOL-1</strong> <code>gptel-make-tool</code> defines a tool: name (snake_case), description, elisp function, argument specs (name/type/description, optional flags, enums, arrays, nested objects), async flag (function receives a result-callback first), category label, per-tool confirm flag (boolean or predicate over the args), per-tool include-result policy. Tools are held in a category → name registry.</li>
+<li><strong>FR-TOOL-2</strong> Selected tools (<code>gptel-tools</code>) are declared to the LLM with each request in the backend’s native schema format. <code>gptel-use-tools</code>: nil / t / <code>force</code> (require a tool call where the API supports it).</li>
+<li><strong>FR-TOOL-3</strong> When the LLM requests tool calls, the client runs them locally and loops: results are sent back automatically and the request continues until a turn without tool calls. Parallel calls in one turn are supported; async and sync tools may mix; the continuation fires when all results are in.</li>
+<li><strong>FR-TOOL-4</strong> Confirmation: global policy (always / never / per-tool “auto”), overridable per call by hooks. Pending calls are presented either as an in-buffer read-only block listing each call (<code>(tool_name "arg" …)</code>, truncated) with a banner (Run: <code>C-c C-c</code>, Cancel: <code>C-c C-k</code>, Inspect: <code>C-c C-i</code>, mouse dispatch via multiple-choice), or via minibuffer multiple-choice (always used for read-only buffers).</li>
+<li><strong>FR-TOOL-5</strong> An inspection buffer shows pending calls as editable plists; the user may edit arguments or delete calls entirely before approving; edits propagate into the outgoing message history.</li>
+<li><strong>FR-TOOL-6</strong> Rejected tool calls leave the request <strong>paused and resumable</strong> (“continue tool calls” in the menu).</li>
+<li><strong>FR-TOOL-7</strong> Sync tool errors become string results reported to the LLM (never break the request); a call to an unknown tool returns an error result listing available tools.</li>
+<li><strong>FR-TOOL-8</strong> Tool call+result records are optionally inserted into the buffer as foldable blocks (org <code>#+begin_tool</code>, markdown <code>```tool</code>) containing a machine-readable call plist + result, marked with the <code>tool</code> property so saved chats replay tool turns faithfully. Include policy: always / never / <code>call</code> (arguments only; the result is replaced by a cache notice on replay) / per-tool.</li>
+<li><strong>FR-TOOL-9</strong> Pre/post tool-call hook points can block a call (with an error string to the LLM), stop the request, rewrite name/args (reflected in outgoing history), force/suppress confirmation, or replace the result.</li>
+<li><strong>FR-TOOL-10</strong> <strong>MCP integration</strong> (separate opt-in library + external mcp.el): connect/disconnect commands register/unregister each MCP server’s tools under category <code>mcp-&lt;server&gt;</code>; connecting starts servers as needed, registers <em>and activates</em> their tools, reports partial failures; the tool menu gains “add”/“remove MCP tools” entries that preserve existing selections. Tool name collisions across servers are disambiguated by category.</li>
+</ul>
+<h3 id="rewrite-refactor-fr-rw">3.13 Rewrite / refactor (FR-RW)</h3>
+<ul>
+<li><strong>FR-RW-1</strong> <code>gptel-rewrite</code> on an active region: prompts in the minibuffer for an instruction (default “Rewrite: …”, history, TAB shows the directive, <code>C-c C-e</code> full-buffer editing, <code>M-RET</code> opens the full options menu) and fires a rewrite request. Without region but with pending rewrites, opens the actions menu; otherwise errors.</li>
+<li><strong>FR-RW-2</strong> The system directive defaults to a language-aware template built from the major mode (programmer variant for prog-modes: “generate ONLY code, no fences/explanations”; editor variant for text), overridable via a hook (first non-nil wins), the directive alist, or the menu. For <code>nosystem</code> models the directive folds into the user prompt.</li>
+<li><strong>FR-RW-3</strong> The response is <strong>previewed in place over the original region</strong> (overlay display), streaming in live as the original text visibly morphs (grayed original shrinks as rewrite grows). The buffer is NOT modified. An overlay status line shows state (Waiting/Typing/tool states/Ready) and the model name.</li>
+<li><strong>FR-RW-4</strong> On completion, the region pulses; the overlay becomes mouse/RET-actionable with eldoc + tooltip key hints. Actions: <strong>accept</strong> (replace original), <strong>reject/clear</strong>, <strong>iterate</strong> (re-rewrite using the pending <em>output</em> as input, previous instruction pre-filled), <strong>diff</strong> (with switch options), <strong>ediff</strong> (raw text, window config restored on quit), <strong>merge</strong> (conflict markers via <code>git merge-file</code> when git exists, manual markers otherwise; smerge-mode enabled). Batch variants act on all pending rewrites; navigation commands jump between rewrite regions.</li>
+<li><strong>FR-RW-5</strong> <code>gptel-rewrite-default-action</code> runs one of these automatically on completion (or a custom function).</li>
+<li><strong>FR-RW-6</strong> Multiple pending rewrites may coexist; aborting or erroring cleans up the overlay; a post-rewrite hook runs over the final text (in the staging buffer) before display.</li>
+<li><strong>FR-RW-7</strong> The rewrite prompt is a 3-turn conversation (text-to-rewrite; canned assistant turn “What is the required change? I will generate only the final replacement.”; the instruction) to prime replacement-only output.</li>
+</ul>
+<h3 id="org-mode-extras-fr-org">3.14 Org-mode extras (FR-ORG)</h3>
+<ul>
+<li><strong>FR-ORG-1</strong> Org prompts are sent as Org text (not converted), with cleanup: gptel’s own tool/reasoning block header lines stripped (avoid LLM mimicry), property drawers (configurable element list) removed, tool blocks unescaped.</li>
+<li><strong>FR-ORG-2</strong> <strong>Topics</strong>: <code>gptel-org-set-topic</code> sets a <code>GPTEL_TOPIC</code> property on a heading; requests under it use only that subtree’s text — multiple independent conversations per file.</li>
+<li><strong>FR-ORG-3</strong> <strong>Branching conversations</strong> (<code>gptel-org-branching-context</code>, needs Org ≥ 9.7, warns and degrades to linear otherwise): the conversation context is the outline <em>lineage</em> of point — each ancestor’s heading + direct body, sibling branches excluded; pre-heading top-of-file text included. Combines with topics/regions.</li>
+<li><strong>FR-ORG-4</strong> <strong>Per-heading configuration</strong>: <code>gptel-org-set-properties</code> writes settings as Org properties (<code>GPTEL_MODEL</code>, <code>GPTEL_BACKEND</code>, <code>GPTEL_SYSTEM</code> with <code>\n</code> escaping, <code>GPTEL_TEMPERATURE</code>, <code>GPTEL_MAX_TOKENS</code>, <code>GPTEL_NUM_MESSAGES_TO_SEND</code>, <code>GPTEL_TOOLS</code>, <code>GPTEL_PRESET</code>); at send time inherited properties override buffer settings for that request only (preset property beats system property). Preset-aware minimal writes as in FR-PERSIST-4.</li>
+<li><strong>FR-ORG-5</strong> <strong>Markdown→Org conversion of responses</strong> (<code>gptel-org-convert-response</code>, default on): LLM markdown (fences, inline code, headings, bold, italic, bullets) is converted to Org syntax on insertion. The streaming converter must produce <strong>byte-identical output regardless of chunk boundaries</strong> (holding back ambiguous trailing lexemes), must not transform emphasis inside code blocks, and must pass through literal Org src blocks the LLM already emitted.</li>
+<li><strong>FR-ORG-6</strong> Org state persistence via <code>GPTEL_BOUNDS</code> property (see FR-PERSIST); writing must converge although inserting the property shifts the very offsets being written; long bounds lists must not be truncated.</li>
+</ul>
+<h3 id="introspection-dry-run-logging-fr-inspect">3.15 Introspection, dry-run, logging (FR-INSPECT)</h3>
+<ul>
+<li><strong>FR-INSPECT-1</strong> Dry-run commands (menu, expert-gated) build the full request and show the payload in a buffer as pretty-printed Lisp or JSON. The buffer is editable; <code>C-c C-c</code> sends the edited payload (invalid edits produce a clear error); <code>C-c C-w</code> copies an equivalent shell <code>curl</code> invocation to the kill-ring. Dry-runs of async-transform requests must display once transforms finish.</li>
+<li><strong>FR-INSPECT-2</strong> <code>gptel-log-level</code>: nil / <code>info</code> (request+response bodies) / <code>debug</code> (headers, curl config/command too) appended to a <code>*gptel-log*</code> buffer as timestamped JSON.</li>
+<li><strong>FR-INSPECT-3</strong> A per-request diagnostic view (clickable status) shows the request’s state trail (e.g. <code>INIT → WAIT → TYPE → DONE</code>), INFO fields, and payload attributes — with message bodies scrubbed unless logging is on (privacy).</li>
+<li><strong>FR-INSPECT-4</strong> Paused requests (dry-run, rejected tools) are resumable objects.</li>
+</ul>
+<h3 id="response-variants-and-regeneration-fr-var">3.16 Response variants and regeneration (FR-VAR)</h3>
+<ul>
+<li><strong>FR-VAR-1</strong> Regenerate: delete the response at point (prefix/suffix swallowed in chat buffers) and re-send with current menu settings; the deleted text is retained as a variant.</li>
+<li><strong>FR-VAR-2</strong> Variants at a position (from regeneration, rewrites, in-place replacements) can be cycled forward/back (point offset preserved, region pulses) and ediffed against the current text (variant choice via completion with prefix arg).</li>
+<li><strong>FR-VAR-3</strong> A mark-response command selects the response at point.</li>
+</ul>
+<h3 id="public-extension-api-fr-api">3.17 Public extension API (FR-API)</h3>
+<ul>
+<li><strong>FR-API-1</strong> A documented programmatic entry point (<code>gptel-request</code>) accepts: prompt as string / list of alternating turns / structured turn list / nil (use buffer content); keys for callback, target buffer/position, arbitrary user context, streaming, system prompt override, dry-run, in-place flag, structured-output schema, prompt transform functions, and a pluggable request state machine. It returns a resumable request object and never blocks.</li>
+<li><strong>FR-API-2</strong> The callback contract distinguishes: text chunks (streaming), full text, stream-done, nil+error info, <code>abort</code>, reasoning chunks/end, pending tool calls (with continuation closures), and tool results. Callback exceptions must never break the pipeline.</li>
+<li><strong>FR-API-3</strong> Structured output: a <code>:schema</code> (elisp plist, JSON string, or shorthand DSL) forces a JSON response, encoded per backend (native JSON-schema modes where available; a forced synthetic tool elsewhere).</li>
+<li><strong>FR-API-4</strong> Hook points (complete list): prompt transforms (sync/async, run in an isolated prompt staging buffer); post-request-dispatch; pre-response-insertion; per-stream-chunk; post-response (with response bounds; also fires on error/abort with degenerate bounds); pre/post tool call; save-state; buffer-refresh; context wrap; rewrite post-processing.</li>
+<li><strong>FR-API-5</strong> Documented helper behaviors for hooks: auto-scroll on stream, move-to-next-prompt after response.</li>
+</ul>
+<h3 id="provider-wire-protocols-fr-wire">3.18 Provider wire protocols (FR-WIRE)</h3>
+<p>The client must implement, per provider, the exact request/response dialects — endpoints, auth headers, message shapes, streaming framing (SSE, JSONL, JSON-array, binary AWS event stream), tool declaration/call/result formats, media encodings, reasoning fields, prompt caching, token usage fields. The full protocol matrix is normative and specified in <code>gptel-architecture.md</code> §7–8. Notable non-obvious requirements:</p>
+<ul>
+<li><strong>FR-WIRE-1</strong> Anthropic: <code>max_tokens</code> is mandatory; whitespace-only messages must be skipped; prompt caching via <code>cache_control</code> on system/tools/last message when enabled and model-capable.</li>
+<li><strong>FR-WIRE-2</strong> Gemini: safety settings pinned to BLOCK_NONE; <code>additionalProperties</code> recursively stripped from schemas; no-arg tools need <code>parameters: null</code> (Anthropic conversely requires <code>{}</code>).</li>
+<li><strong>FR-WIRE-3</strong> DeepSeek: strictly alternating roles — consecutive same-role messages must be merged.</li>
+<li><strong>FR-WIRE-4</strong> OpenAI Responses API: kept stateless (<code>store: false</code>, full context each request).</li>
+<li><strong>FR-WIRE-5</strong> Kagi: single-turn only, no streaming, no system message; summarizer takes the URL at point or region text.</li>
+<li><strong>FR-WIRE-6</strong> Bedrock: sigv4 signing delegated to curl ≥ 8.9 (or bearer token); binary event-stream frames parsed without CRC validation.</li>
+<li><strong>FR-WIRE-7</strong> Cross-provider conversation replay must tolerate foreign tool-call id formats.</li>
+</ul>
+<hr />
+<h2 id="non-functional-requirements">4. Non-functional requirements</h2>
+<ul>
+<li><strong>NFR-1</strong> Emacs ≥ 27.1; Transient ≥ 0.7.8; optional markdown-mode; no other hard dependencies. Optional integrations: mcp.el, vterm, project.el (gitignore filtering), Org ≥ 9.7 (branching).</li>
+<li><strong>NFR-2</strong> All network activity asynchronous; the UI thread is never blocked (including OAuth polling and tool loops).</li>
+<li><strong>NFR-3</strong> The user’s point/window are never moved by default (P3); post-insertion hooks run with the buffer’s visible window selected so window-point is correct.</li>
+<li><strong>NFR-4</strong> Request construction is isolated: prompt processing happens in a temp-buffer copy carrying a snapshot of all request options, so in-flight requests are immune to later user changes and transforms can’t damage user buffers.</li>
+<li><strong>NFR-5</strong> Privacy: diagnostic views scrub message bodies unless logging is explicitly enabled; API keys never appear in argv; crowdsourced-prompt fetching requires consent.</li>
+<li><strong>NFR-6</strong> Robustness: user callback errors demoted; tool errors stringified; malformed stream chunks retried on next chunk; buffer liveness checked before every insertion.</li>
+<li><strong>NFR-7</strong> Performance: org element stripping defaults to the fast regex path (full org parses documented as “extremely slow”); binary-file detection reads ≤ 512 bytes; project file lists and link-type checks memoized; streaming insertion O(chunk).</li>
+<li><strong>NFR-8</strong> All persisted file-local variables are <code>safe-local-variable</code>-marked.</li>
+<li><strong>NFR-9</strong> Backwards compatibility: obsolete option aliases warn; legacy persistence formats restore.</li>
+</ul>
+<hr />
+<h2 id="manual-qa-test-cases">5. Manual QA test cases</h2>
+<p>Conventions: each case lists <strong>Setup → Action → Expected</strong>. “Chat buffer” = gptel-mode buffer. Run the core send/stream suites against at least one streaming backend (curl) and once with curl disabled.</p>
+<h3 id="basic-sending">5.1 Basic sending</h3>
+<ul>
+<li><strong>TC-001</strong> Fresh text buffer, type a question, <code>gptel-send</code> → status Waiting → response inserted below point, separated by a blank line; cursor does not move.</li>
+<li><strong>TC-002</strong> Select a region containing a question, send → only region content sent (verify via dry-run); response after region end.</li>
+<li><strong>TC-003</strong> Point mid-word (“Explain recursi|on”), send → whole word included in prompt (dry-run).</li>
+<li><strong>TC-004</strong> Type below a received response, send again → dry-run shows 2 user turns + 1 assistant turn in order.</li>
+<li><strong>TC-005</strong> Edit the middle of a previous LLM response, then send → edited text appears in the assistant turn.</li>
+<li><strong>TC-006</strong> Two buffers, send in both immediately → both responses arrive in the right buffers.</li>
+<li><strong>TC-007</strong> <code>gptel-abort</code> mid-stream → insertion stops, status shows Abort, partial text remains, no stray processes (<code>list-processes</code>).</li>
+<li><strong>TC-008</strong> Backend that returns an empty completion → status " Empty response", no separator/prefix inserted.</li>
+<li><strong>TC-009</strong> Invalid API key → status shows HTTP error and provider message; nothing inserted; <code>*Messages*</code> has details.</li>
+<li><strong>TC-010</strong> Network down → curl failure message with exit code; same for url-retrieve path.</li>
+<li><strong>TC-011</strong> Kill the request buffer while a request is in flight → no error when the response arrives.</li>
+<li><strong>TC-012</strong> Set turn limit to 1, long conversation, dry run → only the last user/assistant pair + final prompt sent.</li>
+<li><strong>TC-013</strong> <code>gptel-use-curl</code> nil → sending works; streaming silently disabled even with <code>gptel-stream</code> t.</li>
+<li><strong>TC-014</strong> Streaming on: response arrives incrementally; <code>gptel-post-stream-hook</code> (add a counter) fires per chunk; final buffer text identical to a non-streaming run of the same prompt (modulo sampling).</li>
+<li><strong>TC-015</strong> With point kept at the insertion position during streaming, point rides the stream end; with point elsewhere, it never moves.</li>
+<li><strong>TC-016</strong> Add <code>gptel-auto-scroll</code> to the stream hook → window scrolls when response passes bottom of window.</li>
+<li><strong>TC-017</strong> Add <code>gptel-end-of-response</code> to post-response functions → cursor lands after response (next prompt prefix in chat buffers).</li>
+</ul>
+<h3 id="response-tracking">5.2 Response tracking</h3>
+<ul>
+<li><strong>TC-020</strong> Copy response text into another buffer, send there → pasted text is an assistant turn (dry-run).</li>
+<li><strong>TC-021</strong> Same, but set <code>gptel-track-response</code> nil in the target (non-chat) buffer → all text is user turn.</li>
+<li><strong>TC-022</strong> Type immediately before the first char of a response → new text becomes part of the response (check dry-run); type at buffer end after a response → user text.</li>
+<li><strong>TC-023</strong> Undo a response insertion → properties gone with the text; redo restores.</li>
+<li><strong>TC-024</strong> <code>gptel-beginning-of-response</code> / <code>-end-of-response</code> with counts ±2 across 3 responses → correct landings, prefixes skipped.</li>
+<li><strong>TC-025</strong> Enable <code>gptel-highlight-mode</code> (each method: face, margin, fringe; margin+fringe together → margin wins) in a buffer with existing responses → all responses decorated; delete half a response → decoration follows; disable → all decoration gone.</li>
+</ul>
+<h3 id="chat-buffers">5.3 Chat buffers</h3>
+<ul>
+<li><strong>TC-030</strong> <code>M-x gptel</code> → name prompt (default <code>*&lt;Backend&gt;*</code>); buffer in default mode with prompt prefix inserted; “Send your query…” message. <code>C-u M-x gptel</code> → fresh session even if one exists.</li>
+<li><strong>TC-031</strong> <code>M-x gptel</code> completion must offer existing chat buffers only (a non-gptel buffer named like one must not appear).</li>
+<li><strong>TC-032</strong> With no key configured and no authinfo entry → password prompt; key used for the request.</li>
+<li><strong>TC-033</strong> Region active when calling <code>gptel</code> → region text is the initial prompt.</li>
+<li><strong>TC-034</strong> gptel-mode in a fundamental-mode buffer → user-error, mode not left enabled.</li>
+<li><strong>TC-035</strong> Header line present; each indicator clickable: status→diagnostic, tools→tool menu, media toggle (media-capable model only), context→inspector, prompt→directive menu, model→menu. Disable <code>gptel-use-header-line</code> → mode-line + echo status instead; old header line restored on mode disable.</li>
+<li><strong>TC-036</strong> Token usage: before any request <code>[No info]</code>; after request shows counts; click toggles request/session; cumulative grows over requests; cached tokens shown with <code>C</code> prefix when provider reports them.</li>
+<li><strong>TC-037</strong> Markdown chat: TAB on ``` fence folds block (“…” shown), TAB unfolds; nested fences fold correctly; fence at EOB.</li>
+<li><strong>TC-038</strong> Prefixes: customize prompt/response prefixes per mode → inserted cosmetically; dry-run shows them stripped.</li>
+</ul>
+<h3 id="persistence">5.4 Persistence</h3>
+<ul>
+<li><strong>TC-040</strong> Save a markdown chat (2+ turns, a reasoning block, a tool block) → file-local vars written (bounds, model, backend). Reopen, enable gptel-mode → “gptel chat restored.”; verify properties at exact positions (response, ignore, tool·id, front-sticky).</li>
+<li><strong>TC-041</strong> Same in an org chat → Org properties at top instead; per FR-ORG-6 bounds correct; file with &gt;10 tool bounds round-trips (no <code>...</code> truncation).</li>
+<li><strong>TC-042</strong> Restore with backend name not currently registered → message with hint; buffer still usable after picking a backend.</li>
+<li><strong>TC-043</strong> Restore with one of several tools missing → warning names it; other tools restored.</li>
+<li><strong>TC-044</strong> Restore a file with a preset set → preset applied; only drifted settings present as file-locals.</li>
+<li><strong>TC-045</strong> Legacy bounds format <code>((BEG . END) …)</code> → responses restored.</li>
+<li><strong>TC-046</strong> No safe-local-variable confirmation prompts appear on open.</li>
+<li><strong>TC-047</strong> Org file whose line 1 is a heading → save inserts properties at file top without corrupting the heading; repeated saves stable.</li>
+</ul>
+<h3 id="backends-and-keys">5.5 Backends and keys</h3>
+<ul>
+<li><strong>TC-050</strong> Register an OpenAI-compatible backend (e.g. llama.cpp) → its models appear as <code>Name:model</code> in the selector with annotations.</li>
+<li><strong>TC-051</strong> Key via authinfo (<code>machine &lt;host&gt; login apikey password …</code>) → used automatically. Key via function → function called per request. Key with trailing newline → trimmed.</li>
+<li><strong>TC-052</strong> Azure backend → request carries <code>api-key</code> header (not Bearer) at the deployment endpoint.</li>
+<li><strong>TC-053</strong> <code>gptel-backend</code> via setopt declarative form → equivalent backend constructed.</li>
+<li><strong>TC-054</strong> Model with <code>nosystem</code> capability → dry-run payload has no system message; menu hides the instructions column with the explanatory header.</li>
+<li><strong>TC-055</strong> Model <code>:request-params</code> with <code>:stream :json-false</code> → streaming disabled for that model only.</li>
+<li><strong>TC-056</strong> GitHub Copilot: first request triggers device-flow login (code copied, browser opened); token cached; expired session token silently renewed; <code>gptel-gh-login</code> forces re-auth. Model with responses-api capability routes to the Responses dialect (verify in log).</li>
+<li><strong>TC-057</strong> OpenAI OAuth: both login methods (PKCE localhost callback; device flow over SSH — PKCE must refuse under SSH); token refresh near expiry; temperature/max-tokens stripped with warnings.</li>
+<li><strong>TC-058</strong> Bedrock with sigv4 + curl &lt; 8.9 → constructor error; with bearer token → works regardless; streaming (binary event stream) and non-streaming both parse.</li>
+<li><strong>TC-059</strong> Kagi FastGPT: multi-turn buffer → only last user prompt sent; references appended as numbered list. Summarizer with point on URL → URL summarized; on region → text summarized. Last block being a response → “No user prompt found!”.</li>
+<li><strong>TC-060</strong> DeepSeek: buffer crafted to yield two consecutive user turns (edited history) → merged in payload.</li>
+<li><strong>TC-061</strong> Perplexity → citations appended once, in both stream and non-stream modes.</li>
+</ul>
+<h3 id="menu-scope-redirection">5.6 Menu, scope, redirection</h3>
+<ul>
+<li><strong>TC-070</strong> <code>C-u gptel-send</code> opens the menu; all current values displayed truthfully (model, system preview with ⮐ for newlines, context counts, tools count).</li>
+<li><strong>TC-071</strong> Scope <code>=</code>: set temperature buffer-locally → other buffers unaffected. Set globally in a buffer that had a local value → local value killed, global takes effect. Oneshot model change → next request uses it, value restored afterwards <strong>even when the request errors</strong>; a second oneshot set before the first restores doesn’t clobber the saved original.</li>
+<li><strong>TC-072</strong> Prompt from minibuffer with region active: <code>M-RET</code> toggles region inclusion; <code>C-c C-e</code> opens buffer editor whose confirm returns to minibuffer; history recall works; <code>@preset</code> completes.</li>
+<li><strong>TC-073</strong> Prompt from kill-ring; empty kill-ring → user-error; <code>C-u</code> before send → kill selector.</li>
+<li><strong>TC-074</strong> Response to echo area → streamed off, full response messaged; tool-call prompts appear in minibuffer.</li>
+<li><strong>TC-075</strong> Response to kill-ring → yank matches response; on mid-request error → partial response still in kill-ring with message.</li>
+<li><strong>TC-076</strong> Response to other buffer → inserted at that buffer’s point.</li>
+<li><strong>TC-077</strong> Response to new gptel session from an elisp buffer → prompt inserted there fenced as <code>#+begin_src emacs-lisp</code> (org target) or ``` fence (markdown target); backend/model copied; window displayed; existing read-only target → prompt not inserted, request proceeds.</li>
+<li><strong>TC-078</strong> Respond in place with region → region replaced by response; killed text recoverable as variant (<code>gptel--previous-variant</code>). In read-only buffer → message, text kept. In vterm → vterm-specific deletion path.</li>
+<li><strong>TC-079</strong> Incompatible option pairs (<code>m</code>+<code>y</code>; <code>e</code>+<code>b</code>) → transient blocks the second.</li>
+<li><strong>TC-080</strong> Send-button description updates live: selection with line numbers, kill preview, “empty” in error face, context count, destination, replace/kill phrasing.</li>
+<li><strong>TC-081</strong> Additional one-shot instruction (<code>d</code>): overlay shows DIRECTIVE text at the right position (region start / response start / after last response); cleared on menu exit; applied to exactly one request; merges correctly with string, list, and function system prompts.</li>
+<li><strong>TC-082</strong> Save redirection flags <code>C-x C-s</code>, reopen menu → preserved; cycle presets <code>C-x p/n</code>.</li>
+<li><strong>TC-083</strong> Under evil visual selection → region-gated menu entries (rewrite, add-region) visible.</li>
+<li><strong>TC-084</strong> <code>transient-suffix-put</code> rebinds a key (e.g. <code>-m</code> → <code>M</code>) → menu honors it.</li>
+</ul>
+<h3 id="directives">5.7 Directives</h3>
+<ul>
+<li><strong>TC-090</strong> Directive menu lists all <code>gptel-directives</code> with previews; picking one sets it at the chosen scope; <code>DEL</code> unsets; keys auto-assigned uniquely.</li>
+<li><strong>TC-091</strong> Edit directive in buffer: read-only example header immune to editing; <code>C-c C-c</code> applies at scope, <code>C-c C-k</code> aborts; window restored.</li>
+<li><strong>TC-092</strong> Function-valued directive → edit asks for confirmation to edit its current value; declining cancels.</li>
+<li><strong>TC-093</strong> List directive (system + template) → editing changes only the system part, template preserved; dry-run shows template turns prepended.</li>
+<li><strong>TC-094</strong> Crowdsourced prompts: first use asks consent showing URL; cache file written; &gt;14-day-old cache refetches; refusal → no fetch; quitting the picker exits the menu (known quirk); pick → editor opens (“pick and edit”).</li>
+</ul>
+<h3 id="presets">5.8 Presets</h3>
+<ul>
+<li><strong>TC-100</strong> Define presets with <code>:system</code> string / directive symbol / function; <code>:backend</code> by name; <code>:tools</code> by name → applying sets everything at selected scope; menu <code>@</code> indicator shows name; manual drift → strike-through.</li>
+<li><strong>TC-101</strong> <code>:parents</code> chain applies parents first; child overrides.</li>
+<li><strong>TC-102</strong> <code>(:context (:append …))</code>, <code>:append</code> on string system → appended idempotently; <code>:append</code> on a non-string system → clear user-error.</li>
+<li><strong>TC-103</strong> <code>@preset</code> cookie: at prompt start, mid-sentence, before punctuation → applied, cookie stripped from payload. <code>@unknown</code> → left in prompt, no effect. Cookie in a <em>previous</em> turn → ignored. Cookie inside a response region → not fontified, not applied.</li>
+<li><strong>TC-104</strong> <code>gptel-with-preset</code> macro → globals identical before/after.</li>
+<li><strong>TC-105</strong> Save-preset command → snapshot correct; elisp on kill-ring evaluates to same preset.</li>
+<li><strong>TC-106</strong> <code>gptel-default</code> preset → all options back to defaults.</li>
+</ul>
+<h3 id="context">5.9 Context</h3>
+<ul>
+<li><strong>TC-110</strong> <code>gptel-add</code> on region → highlight overlay; dry-run shows “Request context:” with <code>In buffer …</code> fenced excerpt in the system message. <code>gptel-add</code> with point inside → removes (toggle). Re-adding overlapping region replaces, never stacks.</li>
+<li><strong>TC-111</strong> Edit text inside a context region → excerpt reflects edit at next send (live context). Delete the whole region → overlay evaporates; sending works; context list clean after removal ops.</li>
+<li><strong>TC-112</strong> Whole-buffer context grows with insertions at both ends; region context does not extend at its start.</li>
+<li><strong>TC-113</strong> Kill a context buffer → next send fine; inspector doesn’t list it; menu counts pruned on open.</li>
+<li><strong>TC-114</strong> Dired: mark 2 files + 1 directory, <code>gptel-add</code> → confirmation for recursion; gitignored files skipped with message; with restriction disabled → included; TRAMP file → always included.</li>
+<li><strong>TC-115</strong> Binary file with media-incapable model → refused with message; PNG-with-ICC-profile still detected as binary; capable model → sent as media (verify payload).</li>
+<li><strong>TC-116</strong> Kill-ring context: plain add replaces; prefix arg appends with <code>----</code> separator.</li>
+<li><strong>TC-117</strong> Context placement: <code>system</code> (prepended to system message, original retained), <code>user</code> (inserted before final user text, prefix handling right), nil (not sent though listed), <code>system</code>+<code>nosystem</code> model → lands in user prompt. Function-valued system prompt + context → still correct.</li>
+<li><strong>TC-118</strong> Excerpt formatting: two regions on one line → single <code>... (Line N)</code>; mid-line start → leading <code>...</code>; last region short of EOB → trailing <code>...</code>; region from line 1 → no marker.</li>
+<li><strong>TC-119</strong> Inspector: chunk under point highlighted; <code>RET</code> visits exact source position (overlay chunk / file chunk / binary preview line); <code>n</code>/<code>p</code> navigation at extremes; <code>d</code> flags (red), <code>d</code> again unflags, flag across region; <code>C-c C-c</code> removes flagged only; <code>C-c C-c</code> with nothing flagged → no-op but state normalized; images previewed inline.</li>
+<li><strong>TC-120</strong> Narrowed source buffer → context regions outside the narrowing still sent.</li>
+</ul>
+<h3 id="media-links">5.10 Media links</h3>
+<ul>
+<li><strong>TC-125</strong> Markdown chat, media model, <code>gptel-track-media</code> on: <code>[](./img.png)</code> gets SEND badge; payload contains base64 part. Plain <code>file:///…</code> (unbracketed) → ignored. <code>[desc](./file.txt)</code> → text-file part.</li>
+<li><strong>TC-126</strong> Unreadable path → “!” badge, tooltip reason; binary with unsupported MIME → “!” + reason; URL link with non-<code>url</code> model → not sent.</li>
+<li><strong>TC-127</strong> Org link forms (<code>[[file:…]]</code>, <code>[[attachment:…]]</code>, <code>&lt;file:…&gt;</code>) all recognized; plain org link not.</li>
+<li><strong>TC-128</strong> Standalone-link predicate configured → inline link rejected with badge, standalone accepted.</li>
+<li><strong>TC-129</strong> Links inside a response region → never annotated, never sent. Media toggle via header line refreshes annotations immediately, both directions.</li>
+</ul>
+<h3 id="reasoning">5.11 Reasoning</h3>
+<ul>
+<li><strong>TC-135</strong> Reasoning model, each <code>gptel-include-reasoning</code> value × {stream, non-stream}: <code>ignore</code> → block visible, delimited, folded, marked ignore, <strong>absent from next turn’s payload</strong>; <code>t</code> → included as response; <code>nil</code> → absent from buffer; buffer name → redirected there (buffer created if missing).</li>
+<li><strong>TC-136</strong> Inline <code>&lt;think&gt;</code> tags (e.g. via Ollama distills) handled same as API-field reasoning; text preceding <code>&lt;think&gt;</code> emitted as response.</li>
+<li><strong>TC-137</strong> Org buffer → <code>#+begin_reasoning</code> block; markdown → ```reasoning fence; delimiters cycle-foldable.</li>
+</ul>
+<h3 id="tools">5.12 Tools</h3>
+<ul>
+<li><strong>TC-140</strong> Define sync tool with 2 string args; ask a question requiring it → status “Calling tool”; result returned; final answer uses it; tool block inserted (org/markdown), folded, propertized <code>tool·id</code>; saved+restored chat replays the tool turn (dry-run shows tool messages).</li>
+<li><strong>TC-141</strong> Async tool (timer-based callback) → same flow; mixed parallel sync+async calls in one turn → continuation fires only after all results.</li>
+<li><strong>TC-142</strong> Confirmation: <code>gptel-confirm-tool-calls</code> t → in-buffer banner block, <code>C-c C-c</code> runs, <code>C-c C-k</code> cancels with “gptel-menu to continue” and menu resume works; mouse-1 dispatch offers y/n/k/i; read-only buffer → minibuffer prompt instead. Tool <code>:confirm</code> predicate over args honored under <code>auto</code>.</li>
+<li><strong>TC-143</strong> Inspect (<code>C-c C-i</code>): edit an argument → executed with edited value AND outgoing history updated; delete one call’s text → that call dropped; unparseable edit → clear error.</li>
+<li><strong>TC-144</strong> Sync tool that signals → error string becomes result; request completes. LLM calls a nonexistent tool → error result listing available tools; request continues.</li>
+<li><strong>TC-145</strong> <code>gptel-use-tools</code> force → payload requests forced tool use (per-backend field); nil → no tools in payload despite selection.</li>
+<li><strong>TC-146</strong> Include-results <code>call</code> → replay payload contains cache notice instead of result. Include nil → no in-buffer record but conversation continues.</li>
+<li><strong>TC-147</strong> Pre-tool hook returning <code>:block "reason"</code> → LLM receives error-wrapped reason; <code>:stop</code> → request ends; <code>:confirm t</code> forces prompt for a no-confirm tool; args rewrite visible in both execution and history. Post-tool hook replacing <code>:result</code> → replacement sent and displayed.</li>
+<li><strong>TC-148</strong> Tool menu: category three-state key (show → select-all/deselect-all); selections persist across category switches; RET applies at scope; <code>q</code> leaves <code>gptel-tools</code> untouched; counts <code>(n/m)</code> correct.</li>
+<li><strong>TC-149</strong> MCP: mcp.el absent → clean user-error; no servers configured → user-error; connect ALL → tools registered under <code>mcp-&lt;server&gt;</code>, activated, failures counted; disconnect offers server shutdown; reconnect after disconnect clean; <code>M+</code>/<code>M-</code> in tool menu preserve unrelated selections; same tool name on two servers → both usable via category.</li>
+</ul>
+<h3 id="rewrite">5.13 Rewrite</h3>
+<ul>
+<li><strong>TC-155</strong> Select prose region → <code>gptel-rewrite</code> → instruction minibuffer (TAB shows directive, <code>M-RET</code> opens menu, <code>C-c C-e</code> buffer editor) → RET → overlay status Waiting→Typing (text morphs in place; buffer NOT modified — verify <code>buffer-modified-p</code> and undo) → Ready + pulse.</li>
+<li><strong>TC-156</strong> Code region in a prog-mode buffer → directive is the language-specific programmer variant (dry-run).</li>
+<li><strong>TC-157</strong> Accept → region replaced exactly by rewrite; reject → original untouched, overlay gone; iterate → new request whose <em>input</em> is the pending output, instruction pre-filled.</li>
+<li><strong>TC-158</strong> Diff with switches (<code>-w</code>, <code>-U 5</code>) honored; jump-to-old lands in source. Ediff shows raw text (no overlay faces) and restores window config + overlay display on quit; run twice.</li>
+<li><strong>TC-159</strong> Merge: with git → conflict markers labeled original/backend-name, smerge-mode on; without git in PATH → manual markers equivalent; region not at BOL → markers still at BOL.</li>
+<li><strong>TC-160</strong> Multiple pending rewrites: batch Accept-all / Clear-all / Merge-all / Diff-all; <code>C-c C-n</code>/<code>C-c C-p</code> navigation; “No further rewrite regions!” at ends.</li>
+<li><strong>TC-161</strong> Abort mid-rewrite → overlay + staging buffer cleaned. Error mid-rewrite → message with status; same cleanup. Kill source buffer mid-flight → no error.</li>
+<li><strong>TC-162</strong> <code>gptel-rewrite-default-action</code> each value (accept/diff/ediff/merge/dispatch/custom fn) fires on completion.</li>
+<li><strong>TC-163</strong> No region, no pending rewrites → user-error. Response lacking the original’s trailing newline → newline restored. RET dispatch: choice keys shown in status line (Emacs 29+), original status restored on quit.</li>
+<li><strong>TC-164</strong> <code>nosystem</code> model rewrite → directive folded into prompt, context moved to user channel (dry-run).</li>
+<li><strong>TC-165</strong> Rewrite on narrowed buffer → diff/ediff compare correctly against the narrowed source.</li>
+</ul>
+<h3 id="org">5.14 Org</h3>
+<ul>
+<li><strong>TC-170</strong> Org chat: response arrives converted (fences→<code>#+begin_src</code>, <code>**b**</code>→<code>*b*</code>, <code>*i*</code>→<code>/i/</code>, <code>##</code>→<code>**</code>, <code>`c`</code>→<code>=c=</code>, `* item<code>→</code>- item`).</li>
+<li><strong>TC-171</strong> Streaming conversion identical to one-shot for the same text; adversarial chunking: fence split <code>``</code>+<code></code> <code>;</code>**<code>split around boundary; response ending exactly in ```` ``` ````; five backticks inside a code block; emphasis chars inside code blocks untouched; LLM emitting literal</code>#+begin_src` passed through (even arriving &lt; 11 chars per chunk).</li>
+<li><strong>TC-172</strong> Two simultaneous streaming org responses → each converted independently; staging buffers cleaned per response.</li>
+<li><strong>TC-173</strong> <code>gptel-org-set-topic</code> on heading 2 of 3 → dry-run contains only that subtree; property completion offers existing topics; command errors outside org.</li>
+<li><strong>TC-174</strong> Branching on: point in nested subtree → payload = lineage (ancestors’ heading+body) without siblings; heading at point-min excluded unless point under it; leading non-heading text included; combined with topic narrowing and with region; Org &lt; 9.7 → warning + linear.</li>
+<li><strong>TC-175</strong> Branching + default org prompt prefix (<code>***</code>) → README-documented pitfall reproducible; changing prefixes to non-headings fixes it.</li>
+<li><strong>TC-176</strong> <code>gptel-org-set-properties</code> under a heading → properties written; requests under that heading use them (model/system/temperature override for that request only); <code>GPTEL_PRESET</code> beats <code>GPTEL_SYSTEM</code>; <code>\n</code> in GPTEL_SYSTEM decodes; other headings unaffected; non-org buffers unaffected by the advice.</li>
+<li><strong>TC-177</strong> Property drawers stripped from payload (default); hand-edited tool block with org-escaped lines (<code>,*</code>) unescaped in payload; <code>#+begin_tool</code>/<code>#+begin_reasoning</code> header lines never sent.</li>
+</ul>
+<h3 id="introspection">5.15 Introspection</h3>
+<ul>
+<li><strong>TC-185</strong> Dry-run (Lisp and JSON) shows exact payload; edit a value → <code>C-c C-c</code> sends edited payload (verify in log); corrupt the sexp → “Can not resume” class error; <code>C-c C-w</code> yields a runnable curl command (shell-quote check with spaces/quotes in prompt).</li>
+<li><strong>TC-186</strong> Dry-run with an async context function still pending → viewer appears after transforms finish (polling).</li>
+<li><strong>TC-187</strong> <code>gptel-log-level</code> info vs debug → bodies vs +headers/config in <code>*gptel-log*</code>; timestamps present; no key material at info level.</li>
+<li><strong>TC-188</strong> Click status → diagnostic buffer: state trail correct for plain (INIT→WAIT→TYPE→DONE), tool-loop (…TYPE→TOOL→TRET→WAIT→…), error (→ERRS), abort (→ABRT) requests; message bodies scrubbed when logging off.</li>
+</ul>
+<h3 id="variants">5.16 Variants</h3>
+<ul>
+<li><strong>TC-190</strong> Regenerate a response → old text retained as variant; <code>gptel--previous-variant</code>/<code>next</code> cycle with point offset preserved and wraparound; pulse on switch.</li>
+<li><strong>TC-191</strong> Ediff against variant; with several variants, prefix arg → variant picker. No history → “response is additive” error. Mark-response outside any response → error.</li>
+</ul>
+<h3 id="cross-cutting-stress">5.17 Cross-cutting / stress</h3>
+<ul>
+<li><strong>TC-195</strong> All defaults, <code>emacs -Q</code> + package → first send works with only <code>gptel-api-key</code> set (out-of-the-box OpenAI).</li>
+<li><strong>TC-196</strong> Obsolete aliases (<code>gptel-post-response-hook</code>, <code>gptel-context--alist</code>, <code>gptel--system-message</code> file-local) → warnings, still functional; legacy file restores delete the stale var.</li>
+<li><strong>TC-197</strong> Unicode/multibyte prompt + response round-trip (curl and url paths); CRLF platform check on Windows (header-size byte counting).</li>
+<li><strong>TC-198</strong> 100+ KB prompt (large context) → sent via stdin without argv-length errors.</li>
+<li><strong>TC-199</strong> Simultaneous: streaming chat in buffer A, rewrite in buffer B, tool confirmation pending in C → all complete independently; abort in A affects only A.</li>
+<li><strong>TC-200</strong> Menu opened, options changed but <em>not</em> sent → no request side effects except scoped variable sets; oneshot values pending exactly one request.</li>
+</ul>
+
+</body>
+</html>
