@@ -309,10 +309,9 @@ code alone.
 
 ## gptel / LLM chat (laptop only)
 
-- `core/flow-gptel.el` (module, C-c g prefix) +
-  `core/gptel-claude-code.el` (our own gptel backend library, kept
-  in-repo like `latex-font-sync.el`, with `gptel-claude-code-tests.el`
-  and `gptel-claude-code-fixture.jsonl` beside it).  gptel itself comes
+- `core/flow-gptel.el` (module, C-c g prefix) + `core/gptel-claude-code/`
+  (our own gptel backend: `gptel-claude-code.el`, its tests, the
+  recorded stream fixture, and `docs/`).  gptel itself comes
   from **MELPA**; the backend shells out to the local `claude` CLI in
   headless mode (subscription auth, no API keys, one `claude -p`
   process per request, stateless full-transcript replay).  Only the
@@ -322,8 +321,9 @@ code alone.
   internal contracts (callback symbols, FSM transitions).  Verified
   against gptel-20260703.  After `M-x package-refresh-contents` +
   gptel upgrade, run the ERT suite first, from the repo root:
-  `emacs -Q --batch --eval '(package-initialize)' -L core -l
-  gptel-claude-code-tests.el -f ert-run-tests-batch-and-exit`
+  `emacs -Q --batch --eval '(package-initialize)' -L
+  core/gptel-claude-code -l gptel-claude-code-tests.el -f
+  ert-run-tests-batch-and-exit`
   (tests the installed elpa gptel; live e2e adds
   `GPTEL_CLAUDE_LIVE=1`, costs quota).
 - Streaming requires `gptel-use-curl` non-nil (the default) even
@@ -336,10 +336,13 @@ code alone.
 - Chat buffers default to markdown-mode (gptel's own default; markdown
   preview keys apply).  Do NOT default them to org-mode without
   scoping org-fragtog first — see the org-fragtog note above.
-- The backend was developed in `~/flow/gptel-headless` (research
-  workspace with the gptel v0.9.9.5 source it was built against, spec
-  documents, and the implementation plan).  THIS repo's copy is
-  canonical now; that workspace is reference material.
+- Reference documentation lives in `core/gptel-claude-code/docs/`
+  (gptel requirements/architecture/implementation specs, the claude -p
+  CLI spec, the implementation plan) and a development skill in
+  `.claude/skills/gptel-claude-code/` loads it — invoke
+  `/gptel-claude-code` before nontrivial work on the backend.  The
+  gptel v0.9.9.5 source the docs' line numbers cite stays at
+  `~/flow/gptel-headless/gptel/` (reference only, never on load-path).
 
 ## Telega / TDLib
 

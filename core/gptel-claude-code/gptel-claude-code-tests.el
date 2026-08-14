@@ -5,10 +5,10 @@
 ;; Run offline tests against the INSTALLED gptel (the one the config
 ;; actually uses), from the repo root:
 ;;
-;;   emacs -Q --batch --eval '(package-initialize)' -L core \
+;;   emacs -Q --batch --eval '(package-initialize)' -L core/gptel-claude-code \
 ;;     -l gptel-claude-code-tests.el -f ert-run-tests-batch-and-exit
 ;;
-;; (`package-initialize' activates the elpa gptel + transient; -L core
+;; (`package-initialize' activates the elpa gptel + transient; the -L
 ;; puts gptel-claude-code.el on the load path.)  Run this after every
 ;; gptel package upgrade — the backend reuses gptel internals.
 ;;
