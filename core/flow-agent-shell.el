@@ -73,6 +73,14 @@ repo, or to any directory regardless of what buffer is current."
   (keymap-set flow-agent-shell-map "a" #'agent-shell-anthropic-start-claude-code)
   (keymap-set flow-agent-shell-map "d" #'flow-agent-shell-in-directory)
   :config
+  ;; No ASCII-art banner: it eats most of a half-screen window and
+  ;; scrolls the actually useful first response out of view.
+  (setq agent-shell-show-welcome-message nil)
+  ;; The banner has a SECOND half: on graphical frames the default
+  ;; header style is a multi-row SVG (icon block + key-hints row) that
+  ;; stays glued to the top of the buffer.  `text' is the one-line
+  ;; version with the same name/status content.
+  (setq agent-shell-header-style 'text)
   ;; Subscription login, not ANTHROPIC_API_KEY.
   (setq agent-shell-anthropic-authentication
         (agent-shell-anthropic-make-authentication :login t))
