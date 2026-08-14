@@ -34,6 +34,13 @@
 ;; (which Emacs ≥27 runs automatically between early-init.el and init.el).
 (setq package-quickstart t)
 
+;; No tool-bar (the icon button strip) or menu-bar (the File/Edit/…
+;; text row) at the top.  Setting the frame parameters in
+;; `default-frame-alist' here means the bars are never drawn on any
+;; frame — no startup flash, unlike `(tool-bar-mode -1)' in init.
+(push '(tool-bar-lines . 0) default-frame-alist)
+(push '(menu-bar-lines . 0) default-frame-alist)
+
 ;; Termux's pdflatex was compiled with a hardcoded TEXMFROOT of `2026.0'
 ;; while the actual install lives at `2026'.  A login shell fixes this by
 ;; sourcing /etc/profile.d/texlive.sh; Android Emacs doesn't, so we reproduce
