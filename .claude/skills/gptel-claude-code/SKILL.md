@@ -106,17 +106,38 @@ From the flow-emacs repo root:
       -L core/gptel-claude-code \
       -l gptel-claude-code-tests.el -f ert-run-tests-batch-and-exit
 
+On the Boox, prefix the live run with `env -u BUN_OPTIONS`. The CLI wrapper
+there exports a *relative* `--preload …/setdns.js` computed against the cwd it
+was launched from and re-appends whatever it inherits, so a nested `claude`
+started elsewhere (the tests run in a scratch temp dir) gets a stale path and
+dies at startup — FSM state `ERRS`, `:status "Claude Code startup error"`,
+every live test failing in ~0.2s. That is the harness, not the backend.
+
 ## CLI version compatibility
 
 - Built and verified on claude CLI **2.1.231** (laptop).
-- **2.1.112** (Termux/Boox pinned era): everything the backend emits exists and
-  is byte-identical (verified by grepping the actual 2.1.112 npm tarball) —
-  EXCEPT model names: `fable`/`claude-fable-5`/`claude-opus-5` don't exist
-  before 2.1.170/2.1.219; use `sonnet`/`opus`/`haiku`. Old-CLI soft caveats:
+- **Boox/Termux: 2.1.232**, re-verified there 2026-08-14 — full suite 17/17
+  including the four live e2e, run with the Android HOME and
+  `CLAUDE_CONFIG_DIR` to rehearse how the native Emacs invokes it.
+- **Do not treat the tablet's version as pinned.** The 2026-08-14 migration
+  replaced the npm install with the claude-code-android wrapper, which checks
+  for a new release about once a day and promotes it after a SHA256 check and
+  a launch smoke test. So the Boox now tracks current, and can be *ahead* of
+  the laptop. A bad release is blocklisted and the previous binary keeps
+  running, so the realistic drift is "yesterday's version", not a crash — but
+  if the backend suddenly misbehaves only on the tablet, check
+  `claude --version` on both machines before suspecting the code.
+- **2.1.112 (the pinned-npm era) is history** and cannot come back on its own:
+  the npm package was removed, and the wrapper's rollback only reaches
+  binaries cached in `~/.local/share/claude/versions/`. Kept here in case an
+  old CLI turns up elsewhere — everything the backend emits exists and is
+  byte-identical in 2.1.112 (verified by grepping that npm tarball) EXCEPT
+  model names: `fable`/`claude-fable-5`/`claude-opus-5` don't exist before
+  2.1.170/2.1.219; use `sonnet`/`opus`/`haiku`. Soft caveats there:
   large-output truncation (fixed 2.1.208/214) degrades to missing token counts
   or a clean parse error; aborting mid-Bash-tool may orphan processes (fixed
-  2.1.212). The Termux upgrade path is documented in the repo-root
-  `upgrade-claude-termux-prompt.md`.
+  2.1.212). The migration itself is documented in CLAUDE.md, with the prompt
+  that drove it in the repo-root `upgrade-claude-termux-prompt.md`.
 
 ## Known gotchas (learned the hard way)
 
