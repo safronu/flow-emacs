@@ -278,16 +278,14 @@
   (add-hook 'LaTeX-mode-hook #'TeX-fold-mode)
 
   (with-eval-after-load 'tex-fold
-    ;; Fold macros inserted via `TeX-insert-macro' (C-c C-m, and cdlatex's
-    ;; electric insertion) automatically, so a freshly typed macro
-    ;; collapses without a manual `C-c C-o C-b'.  This does not fold
-    ;; as-you-type text; it fires on the macro-insertion command only.
-    (setq TeX-fold-auto t
-          ;; env + macro only, NOT `math'.  Folding math substitutes
-          ;; Unicode glyphs (π, ∫, …) that the document text fonts
-          ;; (Latin Modern, TeX Gyre Pagella, …) don't contain, so they
-          ;; render as tofu.  Math stays as source and is previewed.
-          TeX-fold-type-list '(env macro))
+    ;; Folding is strictly on-demand (C-c p p/b, or the native C-c C-o
+    ;; keys): `TeX-fold-auto' stays at its default nil so macro insertion
+    ;; never folds behind the user's back, and there is no fold-on-open.
+    ;; env + macro only, NOT `math'.  Folding math substitutes
+    ;; Unicode glyphs (π, ∫, …) that the document text fonts
+    ;; (Latin Modern, TeX Gyre Pagella, …) don't contain, so they
+    ;; render as tofu.  Math stays as source and is previewed.
+    (setq TeX-fold-type-list '(env macro))
 
     ;; AUCTeX's `\begin'/`\end' fold markers use glyphs no font on the
     ;; devices carries: U+25FC ◼ (\end of theorem-like envs) and
@@ -334,19 +332,51 @@
     ;; and leaves an overlay that doesn't span the `|…|' body.  For
     ;; `\lstinline', extend AUCTeX's own verb-macro list instead.
     (when (boundp 'TeX-fold-verb-macros)
-      (add-to-list 'TeX-fold-verb-macros "lstinline")))
+      (add-to-list 'TeX-fold-verb-macros "lstinline"))
 
-  ;; Fold the buffer once on open so existing content isn't a wall of
-  ;; backslashes.  Deferred a hair so font-lock and AUCTeX styles finish first.
-  (add-hook 'LaTeX-mode-hook
-            (lambda ()
-              (run-with-idle-timer 0.1 nil
-                                   (lambda (buf)
-                                     (when (buffer-live-p buf)
-                                       (with-current-buffer buf
-                                         (TeX-fold-buffer))))
-                                   (current-buffer)))
-            'append))
+    ;; Fold only the \begin{...}/\end{...} lines of the environment at
+    ;; point, exactly what `TeX-fold-buffer' renders for that env (the
+    ;; `TeX-fold-begin-end-spec-list' look: bold "Theorem." etc.).
+    ;; `TeX-fold-env' is deliberately NOT used: the default
+    ;; `TeX-fold-env-spec-list' knows only `comment', so any other env
+    ;; would collapse to an opaque "[env]" placeholder hiding its body.
+    (defun flow-tex-fold-env-markers ()
+      "Fold the \\begin/\\end markers of the innermost environment at point.
+The body stays visible; only the markers get their fold display.
+Returns non-nil when something was folded."
+      (interactive)
+      (save-excursion
+        ;; When point sits on the \begin/\end macro itself, the matching
+        ;; functions can resolve to the wrong environment; step just
+        ;; inside the env body first.
+        (let ((ms (TeX-find-macro-start)))
+          (when (and ms
+                     (save-excursion
+                       (goto-char ms)
+                       (looking-at (concat (regexp-quote TeX-esc)
+                                           "\\(begin\\|end\\)\\b"))))
+            (if (string= (match-string 1) "end")
+                (goto-char (max (point-min) (1- ms)))
+              (goto-char ms)
+              (goto-char (or (TeX-find-macro-end) (point))))))
+        (let ((env (LaTeX-current-environment)))
+          (if (or (null env) (string= env "document"))
+              (progn (when (called-interactively-p 'interactive)
+                       (message "Not inside a foldable environment"))
+                     nil)
+            (let ((folded nil))
+              (save-excursion
+                (LaTeX-find-matching-end)
+                ;; Point is after \end{...}; back onto the macro.
+                (skip-chars-backward "^\\\\")
+                (when (TeX-fold-item 'macro) (setq folded t)))
+              (save-excursion
+                (LaTeX-find-matching-begin)
+                ;; Point lands on the backslash of \begin{...}; step in so
+                ;; `TeX-fold-item' sees the macro at point.
+                (forward-char 1)
+                (when (TeX-fold-item 'macro) (setq folded t)))
+              folded)))))))
 
 ;;; --- Code font for LaTeX syntactic markup --------------------------------
 ;;

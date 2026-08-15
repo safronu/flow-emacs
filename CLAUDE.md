@@ -169,8 +169,20 @@ code alone.
 
 ## Folding + buffer font
 
-- `TeX-fold-mode` is on in every LaTeX buffer, and the buffer auto-folds
-  on open.  `TeX-fold-type-list` is `(env macro)` — **not** `math`.
+- `TeX-fold-mode` is on in every LaTeX buffer, but folding is strictly
+  **on-demand** (user decision 2026-08-15): no fold-on-open, and
+  `TeX-fold-auto` stays nil so macro insertion never folds.  The
+  `C-c p` keys are unified display controls doing previews AND folds
+  together (`core/flow-preview.el`): `C-c p p` previews math at point
+  or folds/unfolds the macro or env markers at point, `C-c p b` =
+  `TeX-fold-buffer` + `preview-buffer`, `C-c p c` clears both (leaves
+  font-lock alone).  Per-item env folding goes through
+  `flow-tex-fold-env-markers` (`core/flow-latex.el`), which folds ONLY
+  the `\begin`/`\end` macros — stock `TeX-fold-env` would collapse the
+  whole body to `[env]` because `TeX-fold-env-spec-list` only knows
+  `comment`; the pretty theorem look is begin/end *macro* folding via
+  `TeX-fold-begin-end-spec-list`.  Do not reintroduce auto-folding.
+  `TeX-fold-type-list` is `(env macro)` — **not** `math`.
   Folding math substitutes Unicode glyphs (π, ∫) that the document text
   font (Latin Modern, Pagella, …) doesn't contain, so they render as
   tofu on Android.  Math stays as source; `C-c p p` previews it.
@@ -178,9 +190,7 @@ code alone.
   (`TeX-fold-auto-reveal`, default = reveal on left/right/char motion
   into the fold).  `reveal-mode` does NOT participate: fold overlays hide
   their contents via the `display` property, but `reveal-mode` only
-  watches the `invisible` property.  The `(add-hook 'LaTeX-mode-hook
-  #'reveal-mode)` line is essentially a no-op for folds; keep or delete
-  as you like.
+  watches the `invisible` property.
 - `latex-font-sync-mode` is ON in the android and laptop profiles
   (enabled in each profile's init.el;
   `core/latex-font-sync/latex-font-sync.el`).  It

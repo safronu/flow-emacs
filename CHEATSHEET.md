@@ -10,17 +10,23 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 3. First launch installs `auctex cdlatex yasnippet ace-window org-fragtog`
    (+ `avy` as ace-window's dep) from MELPA — needs network.
 
-## Preview (inline PNG overlay)
+## Display: previews + folds on one prefix
 
-| Keys        | Action                          |
-| ----------- | ------------------------------- |
-| `C-c p p`   | Preview formula/env at point    |
-| `C-c p b`   | Preview whole buffer            |
-| `C-c p c`   | Clear all previews              |
-| `C-c C-p C-p` | AUCTeX default: preview at point |
+`C-c p` controls everything the buffer *shows* — both the inline PNG
+previews and TeX-fold overlays. Nothing folds or previews on its own;
+these keys are the only triggers.
+
+| Keys        | Action                                             |
+| ----------- | -------------------------------------------------- |
+| `C-c p p`   | In math: preview the formula. Elsewhere: fold the macro/environment at point (on an existing fold: unfold it) |
+| `C-c p b`   | Fold all markup + preview the whole buffer         |
+| `C-c p c`   | Clear all previews and folds (syntax colors stay)  |
+| `C-c C-p C-p` | AUCTeX default: preview at point                 |
 
 Point inside `$…$`, `\[…\]`, or an env like `equation` — hit `C-c p p`.
 Move point onto an overlay to reveal the source; leave to re-render.
+`\verb` bodies fold only via the buffer-wide `C-c p b` (AUCTeX folds
+them per-region, not per-item).
 
 The same `C-c p p` / `C-c p b` / `C-c p c` work in `.org` buffers too
 (`C-c p p` toggles the fragment at point; org's own `C-c C-x C-l` also
@@ -44,20 +50,22 @@ view; for real math work use `.tex`.
 
 ## Folding + fonts
 
-`TeX-fold-mode` is on by default and the buffer folds itself on open.
-Text-markup macros display as their styled content (`\textbf{F}` →
-**F**, `\emph{x}` → *x*, `\section{Foo}` → Foo); point entry
-auto-reveals the source (via TeX-fold's own `TeX-fold-auto-reveal`, not
-`reveal-mode` — fold overlays hide contents through the `display`
-property, which `reveal-mode` doesn't watch), exit re-folds. Math
-(`\pi`, `\int`) is NOT folded — preview it instead with `C-c p p`.
+`TeX-fold-mode` is on, but folding is strictly on-demand: the buffer
+opens as plain source and folds only via `C-c p p`/`C-c p b` (or the
+native `C-c C-o` keys below). Text-markup macros display as their
+styled content (`\textbf{F}` → **F**, `\emph{x}` → *x*,
+`\section{Foo}` → Foo); point entry auto-reveals the source (via
+TeX-fold's own `TeX-fold-auto-reveal`, not `reveal-mode` — fold
+overlays hide contents through the `display` property, which
+`reveal-mode` doesn't watch), exit re-folds. Math (`\pi`, `\int`) is
+NOT folded — preview it instead with `C-c p p`.
 
 | Keys          | Action                                    |
 | ------------- | ----------------------------------------- |
 | `C-c C-o C-b` | Fold whole buffer                         |
 | `C-c C-o C-r` | Fold region                               |
 | `C-c C-o b`   | Unfold whole buffer                       |
-| `C-c C-o C-e` | Fold current environment                  |
+| `C-c C-o C-e` | Fold current environment (hides its body — `C-c p p` folds just the `\begin`/`\end` markers) |
 | `C-c C-o C-m` | Fold macro at point                       |
 
 Buffer text is set to the document's own font (via `latex-font-sync`),

@@ -89,7 +89,8 @@ substituted glyphs make sub/superscripts jump off the baseline and are
 awkward to point at.")
 
 (defvar flow-latex-fold t
-  "Non-nil to enable `TeX-fold-mode' in LaTeX buffers and fold on open.")
+  "Non-nil to enable `TeX-fold-mode' in LaTeX buffers.
+Folding is on-demand (C-c p keys); nothing folds automatically.")
 
 (defvar flow-page t
   "Non-nil to enable `flow-page-mode' in LaTeX buffers.

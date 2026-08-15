@@ -197,7 +197,12 @@ key so verification can be re-enabled later.
 
 **Macro folding.** `TeX-fold-mode` hides text-markup syntax behind
 overlays — `\textbf{F}` displays as bold "F", `\emph{x}` as italic
-"x", `\section{Foo}` as "Foo". Auto-reveal is TeX-fold's *own*
+"x", `\section{Foo}` as "Foo". Folding is strictly on-demand: buffers
+open unfolded and nothing folds on insertion; `C-c p p` folds the
+macro or environment markers at point (in math it previews instead,
+and on an existing fold it unfolds), `C-c p b` folds the whole buffer
+alongside previewing it, and `C-c p c` strips all folds and previews
+while leaving syntax highlighting alone. Auto-reveal is TeX-fold's *own*
 machinery (`TeX-fold-auto-reveal`, default = reveal on left/right/char
 movement into the fold); `reveal-mode` doesn't participate because
 fold overlays hide their contents via the `display` property, not the

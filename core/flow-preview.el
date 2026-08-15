@@ -138,10 +138,69 @@ otherwise the section."
 ;; working for muscle memory and for any stale keybinding.
 (defalias 'my/latex-preview-at-point #'flow-latex-preview-at-point)
 
+;;; --- Unified display controls: previews + folds on one keymap -------------
+;;
+;; C-c p is the single "what does this buffer show" prefix: each key
+;; drives BOTH the preview pipeline and TeX-fold.  Folding itself is
+;; strictly on-demand (no fold-on-open, no fold-on-insert — see
+;; flow-latex.el); these commands are how folds get created.  Syntax
+;; highlighting (font-latex) is a separate always-on layer and is never
+;; touched here.
+
+(defun flow-preview--fold-ready-p ()
+  "Non-nil when TeX-fold commands are usable in the current buffer."
+  (and (bound-and-true-p flow-latex-fold)
+       (bound-and-true-p TeX-fold-mode)
+       (fboundp 'flow-tex-fold-env-markers)))
+
+(defun flow-latex-display-at-point ()
+  "Preview or fold the construct at point — unified display control.
+With an active region or in math, preview it (see
+`flow-latex-preview-at-point').  On an existing fold, unfold it.  On a
+foldable macro, fold it; on \\begin/\\end or elsewhere inside an
+environment, fold that environment's begin/end markers
+\(`flow-tex-fold-env-markers').  Otherwise fall back to previewing the
+section.  \\verb bodies fold only via `flow-latex-display-buffer' —
+AUCTeX folds them per-region, not per-item."
+  (interactive)
+  (cond
+   ((or (use-region-p) (and (fboundp 'texmathp) (texmathp)))
+    (flow-latex-preview-at-point))
+   ((and (flow-preview--fold-ready-p)
+         (or
+          ;; Point on a fold → remove it (per-item toggle).
+          (TeX-fold-clearout-item)
+          ;; Point on a macro → fold it; \begin/\end mean "the env".
+          (let ((ms (TeX-find-macro-start)))
+            (if (and ms (save-excursion
+                          (goto-char ms)
+                          (looking-at (concat (regexp-quote TeX-esc)
+                                              "\\(?:begin\\|end\\)\\b"))))
+                (flow-tex-fold-env-markers)
+              (and ms (TeX-fold-item 'macro))))
+          ;; Inside an environment → fold its markers.
+          (flow-tex-fold-env-markers))))
+   (t (preview-section))))
+
+(defun flow-latex-display-buffer ()
+  "Fold all markup and render all previews in the buffer."
+  (interactive)
+  (when (flow-preview--fold-ready-p)
+    (TeX-fold-buffer))
+  (preview-buffer))
+
+(defun flow-latex-display-clearout-buffer ()
+  "Remove every preview and fold from the buffer.
+Font-lock styling (bold \\textbf args, \\verb face, …) stays."
+  (interactive)
+  (preview-clearout-buffer)
+  (when (flow-preview--fold-ready-p)
+    (TeX-fold-clearout-buffer)))
+
 (with-eval-after-load 'latex
-  (define-key LaTeX-mode-map (kbd "C-c p p") #'flow-latex-preview-at-point)
-  (define-key LaTeX-mode-map (kbd "C-c p b") #'preview-buffer)
-  (define-key LaTeX-mode-map (kbd "C-c p c") #'preview-clearout-buffer))
+  (define-key LaTeX-mode-map (kbd "C-c p p") #'flow-latex-display-at-point)
+  (define-key LaTeX-mode-map (kbd "C-c p b") #'flow-latex-display-buffer)
+  (define-key LaTeX-mode-map (kbd "C-c p c") #'flow-latex-display-clearout-buffer))
 
 ;;; --- Org-mode fragment previews -------------------------------------------
 ;;
