@@ -234,6 +234,26 @@ in `android-emacs/init.el`, not your login.
 | `C-c g k` | Abort the request in this buffer                |
 | `C-c RET` | Inside a chat buffer: send (gptel's own key)    |
 
+**Rewrite lifecycle** (`C-c g r` on a region): the region gets a
+`REWRITE` title that cycles *Waiting…* (includes the model's thinking
+time, so this is most of the wait) → *Typing…* → *Ready*. The buffer is
+NOT modified — the proposed text is shown in an overlay, and nothing
+blocks: keep editing elsewhere, switch windows, decide whenever. On
+*Ready* the title lists the keys, which work with point inside the
+highlighted region: `C-c r a` accept, `C-c r k` reject, `C-c r r`
+iterate (refine with a new instruction), `C-c r m` merge with conflict
+markers, `C-c r d` diff, `C-c r e` ediff, and `C-c r n` / `C-c r p`
+hop between multiple pending rewrites. (gptel's stock `C-c C-a`-style
+keys are deliberately rebound — inside the region they would shadow
+AUCTeX's compile/environment/preview commands, see
+`core/flow-gptel.el`; TeX keys keep working there instead.) `RET` or
+mouse-1 on the region opens a one-key chooser for the same actions
+(`a`/`k`/`r`/`m`/`d`/`e` — it does grab input until you pick or
+`C-g`), and `C-c g r` with point on a pending rewrite opens the full
+menu. The title line and the
+proposed text are pure display — never buffer text — so pdflatex,
+the live PDF and inline previews never see them.
+
 ## Agentic coding (`C-c a` prefix, laptop only)
 
 `agent-shell` driving Claude Code over ACP — the agentic complement to

@@ -34,6 +34,9 @@
 
 ;;; Code:
 
+;; Loaded by the time a rewrite completes (the request comes from it).
+(declare-function gptel--rewrite-update-status "gptel-rewrite")
+
 ;; Point the CLI at its login when Emacs's HOME isn't the one that holds
 ;; it (Android: the app's private dir, vs Termux's ~/.claude).  Verified
 ;; on the Boox 2026-08-14: with a foreign HOME the CLI runs but every
@@ -69,7 +72,61 @@
     :allowed-tools '("Read" "Grep" "Glob"
                      "Bash(git diff *)" "Bash(git log *)" "Bash(git status)")
     :working-dir 'buffer
-    :timeout 600))
+    :timeout 600)
+  ;; When a rewrite (C-c g r) finishes, advertise the action keys in
+  ;; the overlay's REWRITE title.  gptel's default is to wait silently
+  ;; for RET/mouse-1 on the overlay, with only a one-shot echo message,
+  ;; eldoc and mouse hover as hints — all three invisible in practice
+  ;; on the e-ink tablet, where a finished rewrite just read as "stuck
+  ;; at REWRITE Ready".  Deliberately NOT the modal chooser (symbol
+  ;; `dispatch' / `gptel--rewrite-dispatch'): `read-multiple-choice'
+  ;; grabs all input until answered — can't even switch windows — and
+  ;; the keys it advertises already exist non-modally on the overlay's
+  ;; own keymap (user feedback, 2026-08-15).  Constraint verified
+  ;; against gptel-20260813.2132: the value must be a NAMED function
+  ;; symbol — the rewrite callback calls `symbol-name' on it before
+  ;; funcalling, so a lambda errors.
+  (setq gptel-rewrite-default-action #'flow-gptel--rewrite-advertise-on-ready))
+
+(defun flow-gptel--rewrite-advertise-on-ready (ov)
+  "Show the rewrite action keys in OV's title, without stealing input.
+The keys live on the overlay's keymap, so they apply with point
+inside the rewritten region; RET there opens the full chooser."
+  (gptel--rewrite-update-status
+   ov (concat " Ready · "
+              (mapconcat (pcase-lambda (`(,key . ,action))
+                           (concat (propertize key 'face 'help-key-binding)
+                                   " " action))
+                         '(("C-c r a" . "accept") ("C-c r k" . "reject")
+                           ("C-c r r" . "iterate") ("RET" . "more"))
+                         " · "))))
+
+;; Rebind the rewrite action keys.  The overlay's keymap outranks the
+;; major mode whenever point is inside a pending rewrite, and gptel's
+;; stock keys there (C-c C-a/C-c C-r/C-c C-k/C-c C-d/C-c C-e/C-c C-n/
+;; C-c C-p/C-c C-m) shadow AUCTeX's core commands — compile-all,
+;; compile-region, kill-job, insert-environment, insert-macro, and the
+;; C-c C-p preview prefix.  Worst case, a muscle-memory C-c C-a
+;; ("compile") silently ACCEPTS the rewrite.  Move the actions to the
+;; user-reserved `C-c r' prefix (mnemonic: rewrite, matching C-c g r;
+;; unused by AUCTeX, RefTeX, cdlatex or flow's other prefixes), so TeX
+;; keys fall through to the major mode again.  RET/mouse-1 (the action
+;; chooser) stay.  The eldoc hint and the transient menu pick up the
+;; new bindings automatically via `substitute-command-keys'.
+(with-eval-after-load 'gptel-rewrite
+  (dolist (key '("C-c C-a" "C-c C-r" "C-c C-k" "C-c C-d"
+                 "C-c C-e" "C-c C-n" "C-c C-p" "C-c C-m"))
+    (keymap-unset gptel-rewrite-actions-map key 'remove))
+  (pcase-dolist (`(,key . ,cmd)
+                 '(("a" . gptel--rewrite-accept)
+                   ("k" . gptel--rewrite-reject)
+                   ("r" . gptel--rewrite-iterate)
+                   ("m" . gptel--rewrite-merge)
+                   ("d" . gptel--rewrite-diff)
+                   ("e" . gptel--rewrite-ediff)
+                   ("n" . gptel--rewrite-next)
+                   ("p" . gptel--rewrite-previous)))
+    (keymap-set gptel-rewrite-actions-map (concat "C-c r " key) cmd)))
 
 (provide 'flow-gptel)
 ;;; flow-gptel.el ends here
