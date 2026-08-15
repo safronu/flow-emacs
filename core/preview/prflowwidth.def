@@ -1,0 +1,82 @@
+%% prflowwidth.def --- widen tightpage preview pages over overfull boxes
+%%
+%% Loaded by preview.sty's \DeclareOption* handler when AUCTeX passes
+%% the "flowwidth" option (appended to `preview-required-option-list'
+%% in core/flow-preview.el, which also puts this directory on
+%% TEXINPUTS).  The option must come after "tightpage" in that list.
+%%
+%% Why: prtightpage.def sets \pdfpagewidth from \wd\pr@box, but amsmath
+%% packs display rows to \displaywidth, so an overfull display keeps
+%% the box at \textwidth while its ink sticks out to the RIGHT of the
+%% box -- off the PDF page, and the rendered PNG is clipped mid-formula
+%% (prauctex.def suppresses the overfull warning, so silently).
+%%
+%% Mechanism: at every shipout, before prtightpage's \PreviewBbAdjust
+%% scan runs, walk a COPY of the finished \pr@box from the end, re-pack
+%% every hbox at natural width, and add max(0, natural - \wd\pr@box) to
+%% the RIGHT bb component only.  Left/bottom/top stay stock, so
+%% preview.el's ascent computation (components 2 and 4) is unaffected,
+%% and \pr@box itself is never modified.
+%%
+%% If this file is not found on TEXINPUTS (or an engine guard below
+%% fires), the option is silently unused and previews behave exactly as
+%% before: overfull tails clipped, nothing broken.
+\ifPreview\else\expandafter\endinput\fi
+%% e-TeX \lastnodetype with pdfTeX/XeTeX node numbering is required;
+%% LuaTeX numbers node types differently -- degrade to stock behavior.
+\ifx\lastnodetype\@undefined\expandafter\endinput\fi
+\ifx\directlua\@undefined\else\expandafter\endinput\fi
+%% Paranoia against future preview.sty internals changes:
+\ifx\pr@addto@front\@undefined\expandafter\endinput\fi
+\ifx\PreviewBorder\@undefined
+  \newdimen\PreviewBorder
+  \PreviewBorder=0.50001bp
+\fi
+\newdimen\pr@flow@rightbb
+\pr@flow@rightbb\PreviewBorder
+\newdimen\pr@flow@maxwd
+\newif\ifpr@flow@cont
+%% prtightpage's shipout code scans \PreviewBbAdjust as four complete
+%% <dimen> values (left bottom right top) via \dimen@= assignments, so
+%% a dimen register is a valid component.  prtightpage defines the
+%% macro only when undefined, so this \def wins in either load order.
+\def\PreviewBbAdjust{-\PreviewBorder -\PreviewBorder
+  \pr@flow@rightbb \PreviewBorder}
+%% Walk the vlist currently being built (call after \unvcopy inside a
+%% \vbox): strip removable glue(11)/kern(12)/penalty(13) from the end,
+%% re-pack each hbox(1) at natural width into \pr@flow@maxwd, recurse
+%% into vboxes(2).  Stops at the first non-removable node (rule,
+%% whatsit, mark, ...) -- partial measurement is acceptable, never
+%% worse than today's unconditional clip.
+\def\pr@flow@vwalk{%
+  \loop
+    \pr@flow@contfalse
+    \ifnum\lastnodetype=11 \unskip\pr@flow@conttrue\fi
+    \ifnum\lastnodetype=12 \unkern\pr@flow@conttrue\fi
+    \ifnum\lastnodetype=13 \unpenalty\pr@flow@conttrue\fi
+    \ifnum\lastnodetype=\@ne
+      \setbox\z@\lastbox
+      \setbox\z@\hbox{\unhbox\z@}%
+      \ifdim\wd\z@>\pr@flow@maxwd \global\pr@flow@maxwd\wd\z@ \fi
+      \pr@flow@conttrue
+    \fi
+    \ifnum\lastnodetype=\tw@
+      \setbox\z@\lastbox
+      \setbox\z@\vbox{\unvbox\z@ \pr@flow@vwalk}%
+      \pr@flow@conttrue
+    \fi
+  \ifpr@flow@cont\repeat}
+\def\pr@flow@measure{%
+  \begingroup
+    \global\pr@flow@maxwd\wd\pr@box
+    \setbox\z@\vbox{\unvcopy\pr@box \pr@flow@vwalk}%
+  \endgroup
+  \global\pr@flow@rightbb\PreviewBorder
+  \ifdim\pr@flow@maxwd>\wd\pr@box
+    \global\advance\pr@flow@rightbb\pr@flow@maxwd
+    \global\advance\pr@flow@rightbb-\wd\pr@box
+  \fi}
+%% Prepend at begin-document so the measurement runs BEFORE
+%% prtightpage's bb scan at each shipout, regardless of option order.
+\AtBeginDocument{\pr@addto@front\pr@ship@end{\pr@flow@measure}}
+\endinput

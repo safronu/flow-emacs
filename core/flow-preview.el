@@ -89,6 +89,22 @@ its x-height (~0.53 em for JetBrains Mono) dwarfs the math font's
         preview-scale-function #'flow-preview-scale
         preview-auto-reveal t)
 
+  ;; Overfull display math: tightpage sizes each snippet's PDF page from
+  ;; \wd of the snippet box; amsmath packs display rows to
+  ;; \displaywidth, so an overfull display sticks out past the page's
+  ;; right edge and the PNG is clipped mid-formula.
+  ;; core/preview/prflowwidth.def re-measures each snippet at shipout
+  ;; and widens the page by the overhang.  It is pulled in as an unknown
+  ;; preview option ("flowwidth" -> \InputIfFileExists{prflowwidth.def}),
+  ;; found via TEXINPUTS.  Must stay AFTER "tightpage" in the option
+  ;; list (load order decides whose shipout code runs first).  A missing
+  ;; file degrades silently to today's clipped behavior.
+  (let ((dir (flow-core-file "preview")))
+    (unless (member dir (split-string (or (getenv "TEXINPUTS") "") ":"))
+      ;; Trailing separator keeps kpathsea's default search path.
+      (setenv "TEXINPUTS" (concat dir ":" (getenv "TEXINPUTS")))))
+  (add-to-list 'preview-required-option-list "flowwidth" 'append)
+
   (defun preview-get-dpi ()
     "Emacs's real rendering resolution, from the default font's em size.
 Scaled by the buffer's `text-scale-mode-amount' so C-x C-+ / C-x C--

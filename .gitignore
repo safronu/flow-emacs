@@ -13,6 +13,9 @@ prv_test.*
 prv-*.svg
 auto/
 preview/
+# preview/ above is AUCTeX build output; core/preview/ is tracked source
+# (prflowwidth.def).  Keep the negation or new files there vanish silently.
+!core/preview/
 .DS_Store
 .#*
 .agent-shell/
