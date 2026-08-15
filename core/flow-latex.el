@@ -289,6 +289,24 @@
           ;; render as tofu.  Math stays as source and is previewed.
           TeX-fold-type-list '(env macro))
 
+    ;; AUCTeX's `\begin'/`\end' fold markers use glyphs no font on the
+    ;; devices carries: U+25FC ◼ (\end of theorem-like envs) and
+    ;; U+21B4/U+21B2 ↴/↲ (itemize/enumerate/description/frame) are
+    ;; absent even from JetBrains Mono — the family fold overlays
+    ;; actually render in, since display strings ignore the buffer's
+    ;; font-sync remap — so they drew as tofu.  Substitute covered
+    ;; glyphs; □ (\end{proof}) is covered and kept.  Function specs
+    ;; (theorem titles etc.) pass through untouched.
+    (when (boundp 'TeX-fold-begin-end-spec-list)
+      (let ((subst (lambda (s) (pcase s ("◼" "■") ("↴" "▾") ("↲" "▴") (_ s)))))
+        (setq TeX-fold-begin-end-spec-list
+              (mapcar (lambda (item)
+                        (let ((spec (car item)))
+                          (cons (cons (funcall subst (car spec))
+                                      (funcall subst (cdr spec)))
+                                (cdr item))))
+                      TeX-fold-begin-end-spec-list))))
+
     ;; How fold specs work: an integer N means "show arg N as the
     ;; placeholder", and the arg text is copied with its font-latex face,
     ;; so `\textbf{X}' folds to a bold `X'.  A function spec is called
