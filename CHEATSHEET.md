@@ -13,16 +13,18 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 ## Display: previews + folds + font on one prefix
 
 `C-c p` controls everything the buffer *shows*, switching between two
-states. **Raw code** (how every buffer opens): default mono font, no
-folds, no previews. **Document**: the document's own font
+states tracked by the buffer-local minor mode `flow-latex-doc-mode`
+(look for the ` Doc` lighter in the mode line). **Raw code** (mode
+off, how every buffer opens): default mono font, no folds, no
+previews. **Document** (mode on): the document's own font
 (`latex-font-sync`), markup folded, math previewed. Nothing folds,
 previews, or re-fonts on its own; these keys are the only triggers.
 
 | Keys        | Action                                             |
 | ----------- | -------------------------------------------------- |
 | `C-c p p`   | In math: preview the formula. Elsewhere: fold the macro/environment at point (on an existing fold: unfold it). Never touches the font |
-| `C-c p b`   | Document mode: apply doc font + fold all markup + preview the whole buffer |
-| `C-c p c`   | Raw code: clear previews and folds, restore the default font (syntax colors stay) |
+| `C-c p b`   | Enter document mode: doc font + fold all markup + preview the whole buffer. Pressing again refreshes after edits |
+| `C-c p c`   | Back to raw code: clear previews and folds, restore the default font (syntax colors stay) |
 | `C-c C-p C-p` | AUCTeX default: preview at point                 |
 
 Point inside `$…$`, `\[…\]`, or an env like `equation` — hit `C-c p p`.

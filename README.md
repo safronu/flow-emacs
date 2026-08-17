@@ -222,7 +222,9 @@ compensates the serif font's smaller x-height (the global default face
 is untouched), and previews keep scaling with the default face. Like
 folding and previews, the font never changes on its own: buffers open
 in the default code font, `C-c p b` applies the document font (as part
-of entering document mode), and `C-c p c` reverts to the code font.
+of entering document mode — the buffer-local `flow-latex-doc-mode`,
+shown as ` Doc` in the mode line), and `C-c p c` reverts to the code
+font.
 While a buffer is opted in, re-sync fires on `C-c C-n`
 (`TeX-normal-mode`, which re-parses the preamble) and on save (after
 the AUCTeX auto-parse write hook already ran). Android Emacs's font

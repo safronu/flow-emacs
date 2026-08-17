@@ -156,12 +156,13 @@ otherwise the section."
 
 ;;; --- Unified display controls: previews + folds + font on one keymap ------
 ;;
-;; C-c p is the single "what does this buffer show" prefix, toggling
-;; between two buffer states:
-;;   raw code  — default (code) font, no folds, no previews.  How every
-;;               buffer opens; C-c p c returns here.
-;;   document  — doc font (latex-font-sync), markup folded, math
-;;               previewed; C-c p b enters it.
+;; C-c p is the single "what does this buffer show" prefix, switching
+;; between two buffer states modelled by the buffer-local
+;; `flow-latex-doc-mode' (lighter " Doc"):
+;;   raw code  — mode off: default (code) font, no folds, no previews.
+;;               How every buffer opens; C-c p c returns here.
+;;   document  — mode on: doc font (latex-font-sync), markup folded,
+;;               math previewed; C-c p b enters (or refreshes) it.
 ;; C-c p p is the per-item control (preview or fold at point) and never
 ;; touches the buffer font — that is a buffer-wide property.  Nothing
 ;; folds, previews, or re-fonts on its own (see flow-latex.el and
@@ -203,28 +204,46 @@ AUCTeX folds them per-region, not per-item."
           (flow-tex-fold-env-markers))))
    (t (preview-section))))
 
+(define-minor-mode flow-latex-doc-mode
+  "Document look for a LaTeX buffer: doc font, folded markup, previews.
+Buffer-local; the \" Doc\" lighter answers \"which state is this
+buffer in\".  Enabling applies the document font FIRST
+(`latex-font-sync-apply' changes the buffer's character metrics,
+clears stale previews, and `flow-preview--optical-factor' must see
+the synced family so the previews rendered next come out at factor
+1), then folds all markup and renders all previews (the preview
+compile finishes asynchronously).  Enabling while already on re-runs
+all three — C-c p b doubles as a refresh after edits.  Disabling
+clears every preview and fold — including ones made per-item with
+C-c p p; the mode owns the whole display state on exit — and reverts
+to the code font.  Font-lock styling is untouched either way."
+  :lighter " Doc"
+  (if flow-latex-doc-mode
+      (progn
+        (when (fboundp 'latex-font-sync-apply)
+          (latex-font-sync-apply))
+        (when (flow-preview--fold-ready-p)
+          (TeX-fold-buffer))
+        (preview-buffer))
+    (preview-clearout-buffer)
+    (when (flow-preview--fold-ready-p)
+      (TeX-fold-clearout-buffer))
+    (when (fboundp 'latex-font-sync-revert)
+      (latex-font-sync-revert))))
+
 (defun flow-latex-display-buffer ()
-  "Enter document mode: document font, all markup folded, all previews.
-The font is applied FIRST — `latex-font-sync-apply' changes the
-buffer's character metrics and clears any stale previews, and
-`flow-preview--optical-factor' must see the synced family so the
-previews rendered next come out at factor 1."
+  "Enter (or refresh) `flow-latex-doc-mode' — the document look.
+Deliberately not a toggle: pressing it in document mode re-folds and
+re-previews the buffer after edits."
   (interactive)
-  (when (fboundp 'latex-font-sync-apply)
-    (latex-font-sync-apply))
-  (when (flow-preview--fold-ready-p)
-    (TeX-fold-buffer))
-  (preview-buffer))
+  (flow-latex-doc-mode 1))
 
 (defun flow-latex-display-clearout-buffer ()
-  "Back to raw code: no previews, no folds, default (code) font.
-Font-lock styling (bold \\textbf args, \\verb face, …) stays."
+  "Exit `flow-latex-doc-mode' — back to raw code.
+Works from any state: clears previews and folds (even hand-made ones)
+and restores the default (code) font."
   (interactive)
-  (preview-clearout-buffer)
-  (when (flow-preview--fold-ready-p)
-    (TeX-fold-clearout-buffer))
-  (when (fboundp 'latex-font-sync-revert)
-    (latex-font-sync-revert)))
+  (flow-latex-doc-mode -1))
 
 (with-eval-after-load 'latex
   (define-key LaTeX-mode-map (kbd "C-c p p") #'flow-latex-display-at-point)

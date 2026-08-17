@@ -174,14 +174,22 @@ code alone.
   `TeX-fold-auto` stays nil so macro insertion never folds.  The
   `C-c p` keys are unified display controls switching between two
   buffer states — raw code (default: code font, no folds/previews) and
-  document (doc font + folds + previews) — in `core/flow-preview.el`:
-  `C-c p p` previews math at point or folds/unfolds the macro or env
-  markers at point (never touches the font), `C-c p b` =
+  document (doc font + folds + previews) — modelled by the
+  buffer-local minor mode `flow-latex-doc-mode` (lighter " Doc") in
+  `core/flow-preview.el`.  `C-c p p` previews math at point or
+  folds/unfolds the macro or env markers at point (never touches the
+  font).  `C-c p b` = `(flow-latex-doc-mode 1)`, whose enable body is
   `latex-font-sync-apply` + `TeX-fold-buffer` + `preview-buffer` (font
   FIRST — it changes char metrics, clears stale previews, and the
-  optical factor must see the synced family), `C-c p c` clears
-  previews + folds and reverts to the code font via
-  `latex-font-sync-revert` (leaves font-lock alone).  Per-item env folding goes through
+  optical factor must see the synced family); deliberately enter/
+  refresh, NOT a toggle — `define-minor-mode' re-runs the body on
+  repeated enables, which is what makes `C-c p b` a refresh after
+  edits.  `C-c p c` = `(flow-latex-doc-mode -1)`: clears previews +
+  folds (hand-made ones included) and reverts to the code font via
+  `latex-font-sync-revert` (leaves font-lock alone); safe from any
+  state.  The lighter means "document look requested", not "rendered"
+  — `preview-buffer` finishes asynchronously and `C-c p p` can create
+  partial state in either mode.  Per-item env folding goes through
   `flow-tex-fold-env-markers` (`core/flow-latex.el`), which folds ONLY
   the `\begin`/`\end` macros — stock `TeX-fold-env` would collapse the
   whole body to `[env]` because `TeX-fold-env-spec-list` only knows
