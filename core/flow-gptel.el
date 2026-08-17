@@ -18,6 +18,8 @@
 ;; Keys (global, prefix C-c g):
 ;;   g  open/switch to a chat buffer    s  send region / buffer-to-point
 ;;   m  gptel menu (model, backend, …)  r  rewrite region (or current line)
+;; M-r (global) = the same rewrite, one chord; shadows the unused
+;; `move-to-window-line-top-bottom' outside minibuffer/isearch.
 ;;   a  add region/buffer to context    f  add file to context
 ;;   k  abort the request in this buffer
 ;; Inside a chat buffer, C-c RET also sends (gptel-mode's binding).
@@ -98,6 +100,12 @@ name is stable while the file contents stay live-editable."
   (keymap-set flow-gptel-map "s" #'gptel-send)
   (keymap-set flow-gptel-map "m" #'gptel-menu)
   (keymap-set flow-gptel-map "r" #'flow-gptel-rewrite-dwim)
+  ;; Short chord for the frequent rewrite flow (user request 2026-08-17).
+  ;; This SHADOWS `move-to-window-line-top-bottom' (core Emacs, unused
+  ;; here) in normal buffers only: the minibuffer's M-r history search
+  ;; and isearch's M-r regexp toggle live in local keymaps, which
+  ;; outrank the global map.  C-c g r remains as the mnemonic form.
+  (keymap-global-set "M-r" #'flow-gptel-rewrite-dwim)
   (keymap-set flow-gptel-map "a" #'gptel-add)
   (keymap-set flow-gptel-map "f" #'gptel-add-file)
   (keymap-set flow-gptel-map "k" #'gptel-abort)
