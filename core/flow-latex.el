@@ -26,9 +26,12 @@
   :ensure auctex
   :demand t
   ;; Line numbers belong to the raw-code look; `flow-latex-doc-mode'
-  ;; (C-c p b/c) hides them in the document state and restores them.
+  ;; (C-c p b/c, M-p) hides them in the document state and restores
+  ;; them.  hl-line stays on in BOTH states — the highlighted line is
+  ;; what keeps point findable across an M-p switch.
   :hook ((LaTeX-mode . visual-line-mode)
-         (LaTeX-mode . display-line-numbers-mode))
+         (LaTeX-mode . display-line-numbers-mode)
+         (LaTeX-mode . hl-line-mode))
   :bind (:map LaTeX-mode-map
               ("C-S-e" . latex-math-from-calc))
   :config

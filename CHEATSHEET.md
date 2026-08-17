@@ -18,7 +18,8 @@ states tracked by the buffer-local minor mode `flow-latex-doc-mode`
 off, how every buffer opens): default mono font, line numbers, no
 folds, no previews. **Document** (mode on): the document's own font
 (`latex-font-sync`), markup folded, math previewed, no line numbers.
-Nothing folds,
+The current line stays highlighted (`hl-line-mode`) in both states, so
+point is easy to find right after a switch. Nothing folds,
 previews, or re-fonts on its own; these keys are the only triggers.
 
 | Keys        | Action                                             |
