@@ -254,7 +254,14 @@ and restores the default (code) font."
 (with-eval-after-load 'latex
   (define-key LaTeX-mode-map (kbd "C-c p p") #'flow-latex-display-at-point)
   (define-key LaTeX-mode-map (kbd "C-c p b") #'flow-latex-display-buffer)
-  (define-key LaTeX-mode-map (kbd "C-c p c") #'flow-latex-display-clearout-buffer))
+  (define-key LaTeX-mode-map (kbd "C-c p c") #'flow-latex-display-clearout-buffer)
+  ;; One-chord toggle for the two display states ("page").  M-p and M-n
+  ;; are the only modifier-letter chords unbound in a .tex buffer with
+  ;; the full stack active (AUCTeX + cdlatex + yas + RefTeX + TeX-fold,
+  ;; enumerated 2026-08-17) — the pair Emacs convention reserves for
+  ;; modes.  The minor-mode command itself is the toggle; C-c p b stays
+  ;; the enter-or-REFRESH key, which a toggle cannot be.
+  (define-key LaTeX-mode-map (kbd "M-p") #'flow-latex-doc-mode))
 
 ;;; --- Org-mode fragment previews -------------------------------------------
 ;;

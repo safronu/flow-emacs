@@ -178,7 +178,12 @@ code alone.
   in flow-latex.el, all profiles) and
   document (doc font + folds + previews, no line numbers) — modelled by the
   buffer-local minor mode `flow-latex-doc-mode` (lighter " Doc") in
-  `core/flow-preview.el`.  `C-c p p` previews math at point or
+  `core/flow-preview.el`.  `M-p` (LaTeX-mode-map) toggles the mode with
+  one chord — chosen because M-p/M-n are the ONLY modifier-letter
+  chords unbound in a .tex buffer with the full stack active
+  (enumerated 2026-08-17: every C-letter is core Emacs, every other
+  M-letter is core or M-o=ace-window), and they are the pair Emacs
+  convention reserves for modes.  `C-c p p` previews math at point or
   folds/unfolds the macro or env markers at point (never touches the
   font).  `C-c p b` = `(flow-latex-doc-mode 1)`, whose enable body is
   `latex-font-sync-apply` + `TeX-fold-buffer` + `preview-buffer` (font

@@ -23,6 +23,7 @@ previews, or re-fonts on its own; these keys are the only triggers.
 
 | Keys        | Action                                             |
 | ----------- | -------------------------------------------------- |
+| `M-p`       | Toggle between the two states with one chord       |
 | `C-c p p`   | In math: preview the formula. Elsewhere: fold the macro/environment at point (on an existing fold: unfold it). Never touches the font |
 | `C-c p b`   | Enter document mode: doc font + fold all markup + preview the whole buffer. Pressing again refreshes after edits |
 | `C-c p c`   | Back to raw code: clear previews and folds, restore the default font (syntax colors stay) |
