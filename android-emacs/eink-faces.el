@@ -82,6 +82,18 @@
  '(aw-mode-line-face  ((t (:foreground "#000000" :background "#ffffff"
                            :weight ultra-bold :height 1.4
                            :box (:line-width (3 . 1) :color "#ffffff")))))
+ ;; The minibuffer's M-o letter (prepended to the prompt by
+ ;; `flow-aw--lead-overlay', flow-core).  Default inherits
+ ;; aw-leading-char-face = the 2.5x jump letters — outsized for a
+ ;; one-line echo area.  Inverse chip (white on black, ultra-bold,
+ ;; 1.4x like the mode-line chips): maximal separation from the
+ ;; black-on-white prompt text next to it.  Unlike the mode-line case
+ ;; a filled black chip is safe here — it sits mid-line next to prompt
+ ;; text, not flush against a neighboring black bar.  The black box is
+ ;; padding: +3px per side inside the chip.
+ '(aw-minibuffer-leading-char-face
+   ((t (:foreground "#ffffff" :background "#000000" :weight ultra-bold
+        :height 1.4 :box (:line-width (3 . 1) :color "#000000")))))
  '(header-line        ((t (:foreground "#000000" :background "#dddddd" :weight medium))))
 
  ;; --- Diagnostics: severity as loudness, never as hue --------------

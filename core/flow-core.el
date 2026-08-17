@@ -157,6 +157,95 @@
 ;; startup, hence `:demand' — with only `:bind' the package (and the
 ;; mode-line letters) wouldn't exist until the first M-o.
 
+;; The mode-line letters (below) are always visible, so the big
+;; in-window overlay letters during M-o are redundant — and on e-ink
+;; each overlay is another repaint + ghost.  But `aw-display-mode-overlay'
+;; nil is all-or-nothing: it no-ops the overlay fn for EVERY window,
+;; leaving any window with no mode line (the active minibuffer, a
+;; buffer-local `mode-line-format' nil) letter-less and unswitchable
+;; by sight.  So the knob stays t and the per-window decision moves
+;; into `aw--lead-overlay-fn' (internal ace-window API; re-verify on
+;; upgrade): overlay only where no bar renders.
+;; `window-mode-line-height' is 0 exactly for those windows, whatever
+;; the cause — it measures the rendered bar, not the variable.
+;;
+;; The minibuffer gets its own shape: `aw--lead-overlay' puts the
+;; letter ON the first character (a `display' overlay that pads to
+;; preserve alignment), which in the minibuffer swallows the first
+;; char of the prompt ("Find file:" → "sind file:").  There we
+;; PREPEND instead — a zero-cover `before-string' overlay at
+;; `point-min', letter + space before an intact prompt — pushed to
+;; `avy--overlays-lead' so avy's normal cleanup removes it.
+
+(defun flow-aw--chip-string (letter)
+  "LETTER fenced by unfaced spaces, styled as the minibuffer chip.
+The spaces keep the chip off the frame edge and the prompt, same
+language as the mode-line letters' fences."
+  (concat " "
+          (propertize letter 'face 'aw-minibuffer-leading-char-face)
+          " "))
+
+(defvar-local flow-aw--minibuffer-chip nil
+  "Overlay showing this minibuffer's M-o letter before the prompt.")
+
+(defun flow-aw--minibuffer-chip-refresh (&rest _)
+  "Sync the active minibuffer's letter chip with its `ace-window-path'.
+Runs after `aw-update' (and from `minibuffer-setup-hook'), so the chip
+tracks letter reassignments while the minibuffer stays open."
+  (let ((win (active-minibuffer-window)))
+    (when win
+      (with-current-buffer (window-buffer win)
+        (let ((path (window-parameter win 'ace-window-path)))
+          (unless (overlayp flow-aw--minibuffer-chip)
+            (setq flow-aw--minibuffer-chip
+                  (make-overlay (point-min) (point-min) (current-buffer))))
+          (overlay-put flow-aw--minibuffer-chip 'window win)
+          (overlay-put flow-aw--minibuffer-chip 'before-string
+                       (and path
+                            (flow-aw--chip-string
+                             (substring-no-properties path)))))))))
+
+(defun flow-aw--minibuffer-setup ()
+  "Assign the fresh minibuffer its letter and show the chip at once.
+On `minibuffer-setup-hook' — activation is not a window-configuration
+change, so `aw-update' would not run on its own until one happens."
+  (when ace-window-display-mode
+    (aw-update)
+    (flow-aw--minibuffer-chip-refresh)))
+
+(defun flow-aw--minibuffer-last (windows)
+  "Move minibuffer windows to the end of WINDOWS.
+`:filter-return' advice on `aw-window-list'.  Mid-list, an activating
+minibuffer would shift the letters of every window sorted after it
+while their mode lines keep showing the old ones (`aw-update' does not
+run on minibuffer activation) — M-o would then obey letters nobody can
+see.  Last, it simply takes the next free letter and every other
+window's letter stays put."
+  (nconc (cl-remove-if #'window-minibuffer-p windows)
+         (cl-remove-if-not #'window-minibuffer-p windows)))
+
+(defun flow-aw--lead-overlay (path leaf)
+  "Show M-o's overlay letter only where no mode line renders.
+LEAF is (PT . WND).  In the minibuffer the persistent chip from
+`flow-aw--minibuffer-setup' already shows the letter; only if it is
+somehow absent, prepend a temporary one (never cover the prompt)."
+  (let ((wnd (cdr leaf)))
+    (cond
+     ((window-minibuffer-p wnd)
+      (let ((chip (buffer-local-value 'flow-aw--minibuffer-chip
+                                      (window-buffer wnd))))
+        (unless (and (overlayp chip) (overlay-get chip 'before-string))
+          (let ((ol (make-overlay (point-min) (point-min)
+                                  (window-buffer wnd))))
+            (overlay-put ol 'window wnd)
+            (overlay-put ol 'before-string
+                         (flow-aw--chip-string
+                          (mapconcat (lambda (c) (string (avy--key-to-char c)))
+                                     (reverse path) "")))
+            (push ol avy--overlays-lead)))))
+     ((zerop (window-mode-line-height wnd))
+      (aw--lead-overlay path leaf)))))
+
 (use-package ace-window
   :demand t
   :bind ("M-o" . ace-window)
@@ -166,13 +255,11 @@
         ;; The default dims the whole frame during selection, i.e. repaints
         ;; every pixel.  Fine on an LCD, a flash and lingering ghosts on e-ink.
         aw-background (not flow-eink-p)
-        ;; The mode-line letters (below) are always visible, so the big
-        ;; in-window overlay letters during M-o are redundant — and on
-        ;; e-ink each overlay is another repaint + ghost.  nil only takes
-        ;; effect while `ace-window-display-mode' is on; if that enable
-        ;; is ever removed, remove this too or M-o shows no letters at all.
-        aw-display-mode-overlay nil
         aw-scope 'frame)
+  (setq aw--lead-overlay-fn #'flow-aw--lead-overlay)
+  (advice-add 'aw-window-list :filter-return #'flow-aw--minibuffer-last)
+  (advice-add 'aw-update :after #'flow-aw--minibuffer-chip-refresh)
+  (add-hook 'minibuffer-setup-hook #'flow-aw--minibuffer-setup)
   (set-face-attribute 'aw-leading-char-face nil
                       :height flow-aw-leading-char-height :weight 'bold)
   (ace-window-display-mode 1)
