@@ -212,7 +212,9 @@ buffer in\".  Enabling applies the document font FIRST
 clears stale previews, and `flow-preview--optical-factor' must see
 the synced family so the previews rendered next come out at factor
 1), then folds all markup and renders all previews (the preview
-compile finishes asynchronously).  Enabling while already on re-runs
+compile finishes asynchronously); line numbers are hidden — they
+belong to the raw-code look and come back on exit.  Enabling while
+already on re-runs
 all three — C-c p b doubles as a refresh after edits.  Disabling
 clears every preview and fold — including ones made per-item with
 C-c p p; the mode owns the whole display state on exit — and reverts
@@ -220,6 +222,9 @@ to the code font.  Font-lock styling is untouched either way."
   :lighter " Doc"
   (if flow-latex-doc-mode
       (progn
+        ;; Line numbers are part of the raw-code look (enabled on
+        ;; LaTeX-mode-hook in flow-latex.el); the document page has none.
+        (display-line-numbers-mode -1)
         (when (fboundp 'latex-font-sync-apply)
           (latex-font-sync-apply))
         (when (flow-preview--fold-ready-p)
@@ -229,7 +234,8 @@ to the code font.  Font-lock styling is untouched either way."
     (when (flow-preview--fold-ready-p)
       (TeX-fold-clearout-buffer))
     (when (fboundp 'latex-font-sync-revert)
-      (latex-font-sync-revert))))
+      (latex-font-sync-revert))
+    (display-line-numbers-mode 1)))
 
 (defun flow-latex-display-buffer ()
   "Enter (or refresh) `flow-latex-doc-mode' — the document look.

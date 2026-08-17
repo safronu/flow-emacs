@@ -173,8 +173,10 @@ code alone.
   **on-demand** (user decision 2026-08-15): no fold-on-open, and
   `TeX-fold-auto` stays nil so macro insertion never folds.  The
   `C-c p` keys are unified display controls switching between two
-  buffer states — raw code (default: code font, no folds/previews) and
-  document (doc font + folds + previews) — modelled by the
+  buffer states — raw code (default: code font, line numbers, no
+  folds/previews; `display-line-numbers-mode` is on the AUCTeX `:hook`
+  in flow-latex.el, all profiles) and
+  document (doc font + folds + previews, no line numbers) — modelled by the
   buffer-local minor mode `flow-latex-doc-mode` (lighter " Doc") in
   `core/flow-preview.el`.  `C-c p p` previews math at point or
   folds/unfolds the macro or env markers at point (never touches the

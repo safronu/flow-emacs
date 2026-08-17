@@ -25,7 +25,10 @@
 (use-package tex
   :ensure auctex
   :demand t
-  :hook ((LaTeX-mode . visual-line-mode))
+  ;; Line numbers belong to the raw-code look; `flow-latex-doc-mode'
+  ;; (C-c p b/c) hides them in the document state and restores them.
+  :hook ((LaTeX-mode . visual-line-mode)
+         (LaTeX-mode . display-line-numbers-mode))
   :bind (:map LaTeX-mode-map
               ("C-S-e" . latex-math-from-calc))
   :config

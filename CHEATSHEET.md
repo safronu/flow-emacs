@@ -15,9 +15,10 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 `C-c p` controls everything the buffer *shows*, switching between two
 states tracked by the buffer-local minor mode `flow-latex-doc-mode`
 (look for the ` Doc` lighter in the mode line). **Raw code** (mode
-off, how every buffer opens): default mono font, no folds, no
-previews. **Document** (mode on): the document's own font
-(`latex-font-sync`), markup folded, math previewed. Nothing folds,
+off, how every buffer opens): default mono font, line numbers, no
+folds, no previews. **Document** (mode on): the document's own font
+(`latex-font-sync`), markup folded, math previewed, no line numbers.
+Nothing folds,
 previews, or re-fonts on its own; these keys are the only triggers.
 
 | Keys        | Action                                             |
