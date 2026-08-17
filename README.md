@@ -212,25 +212,29 @@ substitute Unicode glyphs (π, ∫, …) that the document text font
 doesn't contain, so they'd render as fallback tofu. Math stays as
 source and uses `C-c p p` (preview-latex) for real rasterised previews.
 
-**Buffer font follows the document.** `latex-font-sync.el` remaps the
-buffer's `:family` to a TTF matching the document's declared font package
-— `\usepackage{mathpazo}` → TeX Gyre Pagella, `\usepackage{times}` → TeX
-Gyre Termes, `\renewcommand{\rmdefault}{ppl}` → Pagella, and so on. Only
+**Buffer font follows the document — on demand.** `latex-font-sync.el`
+remaps the buffer's `:family` to a TTF matching the document's declared
+font package — `\usepackage{mathpazo}` → TeX Gyre Pagella,
+`\usepackage{times}` → TeX Gyre Termes,
+`\renewcommand{\rmdefault}{ppl}` → Pagella, and so on. Only
 `:family` is remapped along with a relative `:height` factor that
 compensates the serif font's smaller x-height (the global default face
-is untouched), and previews keep scaling
-with the default face. Re-sync fires on file open, on `C-c C-n`
-(`TeX-normal-mode`, which re-parses the preamble), and on save (after
+is untouched), and previews keep scaling with the default face. Like
+folding and previews, the font never changes on its own: buffers open
+in the default code font, `C-c p b` applies the document font (as part
+of entering document mode), and `C-c p c` reverts to the code font.
+While a buffer is opted in, re-sync fires on `C-c C-n`
+(`TeX-normal-mode`, which re-parses the preamble) and on save (after
 the AUCTeX auto-parse write hook already ran). Android Emacs's font
 backend enumerates `$HOME/fonts` for `.ttf`/`.ttc` only (no OTF, no
 fontconfig), so we ship TrueType conversions of the TeX Gyre + Latin
 Modern OTFs under `android-emacs/fonts/`; `install.sh` symlinks them
 into place, and Emacs picks them up on next launch.
-`latex-font-sync-mode` is on by default; besides matching the document
-font it also happens to be what makes the folded-macro overlays
+The document-font remap is also what makes the folded-macro overlays
 actually render bold/italic (Android's font backend doesn't pick a
 bold variant for overlay display strings unless the buffer default has
-been remapped first).
+been remapped first) — so folds made in raw-code mode show
+regular-weight until `C-c p b`.
 
 **Code font for markup.** With the buffer default remapped to a serif
 document font, macro names (`\textbf`, `\begin`) and delimiters get lost

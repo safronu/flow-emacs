@@ -172,11 +172,16 @@ code alone.
 - `TeX-fold-mode` is on in every LaTeX buffer, but folding is strictly
   **on-demand** (user decision 2026-08-15): no fold-on-open, and
   `TeX-fold-auto` stays nil so macro insertion never folds.  The
-  `C-c p` keys are unified display controls doing previews AND folds
-  together (`core/flow-preview.el`): `C-c p p` previews math at point
-  or folds/unfolds the macro or env markers at point, `C-c p b` =
-  `TeX-fold-buffer` + `preview-buffer`, `C-c p c` clears both (leaves
-  font-lock alone).  Per-item env folding goes through
+  `C-c p` keys are unified display controls switching between two
+  buffer states — raw code (default: code font, no folds/previews) and
+  document (doc font + folds + previews) — in `core/flow-preview.el`:
+  `C-c p p` previews math at point or folds/unfolds the macro or env
+  markers at point (never touches the font), `C-c p b` =
+  `latex-font-sync-apply` + `TeX-fold-buffer` + `preview-buffer` (font
+  FIRST — it changes char metrics, clears stale previews, and the
+  optical factor must see the synced family), `C-c p c` clears
+  previews + folds and reverts to the code font via
+  `latex-font-sync-revert` (leaves font-lock alone).  Per-item env folding goes through
   `flow-tex-fold-env-markers` (`core/flow-latex.el`), which folds ONLY
   the `\begin`/`\end` macros — stock `TeX-fold-env` would collapse the
   whole body to `[env]` because `TeX-fold-env-spec-list` only knows
@@ -193,13 +198,22 @@ code alone.
   watches the `invisible` property.
 - `latex-font-sync-mode` is ON in the android and laptop profiles
   (enabled in each profile's init.el;
-  `core/latex-font-sync/latex-font-sync.el`).  It
+  `core/latex-font-sync/latex-font-sync.el`), but application is
+  ON-DEMAND and per-buffer (user decision 2026-08-17, same contract as
+  folding): the mode's open/style/save hooks gate on the buffer-local
+  `my/latex-font-sync-wanted`, set by `latex-font-sync-apply` (C-c p b)
+  and cleared by `latex-font-sync-revert` (C-c p c).  It
   remaps the buffer's default `:family` to a doc-matching TTF.  A
   non-obvious side effect: without this remap, Android's sfnt-android
   font backend doesn't pick a bold variant for TeX-fold overlay display
-  strings, so `\textbf{X}` folds render regular-weight.  Turning font
-  sync off breaks that visual, even though the fold text property still
-  says `:weight bold`.  Don't disable it lightly.
+  strings, so `\textbf{X}` folds render regular-weight — folds made in
+  raw-code mode show regular weight until C-c p b applies the remap.
+  Turning the mode itself off breaks that visual everywhere, even
+  though the fold text property still says `:weight bold`.  Don't
+  disable it lightly.  Preview sizing tracks the state automatically:
+  `flow-preview--optical-factor` keys off the buffer-local
+  `my/latex-current-family`, and both apply and revert clear stale
+  preview overlays because the char metrics changed.
 - Font-sync detection reads the BUFFER'S OWN preamble first
   (`my/latex-font--scan-preamble-packages`) and only then AUCTeX's
   `LaTeX-provided-package-options`.  That order is a bug fix

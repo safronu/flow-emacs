@@ -100,13 +100,20 @@
 ;; serif font's smaller x-height; the global default face is untouched
 ;; and previews keep scaling with the effective buffer font.
 ;;
-;; Enabled by default here for a second, non-obvious reason: without a
+;; On-demand, same contract as folds/previews: buffers open in the code
+;; font, C-c p b applies the document font, C-c p c reverts it.  The
+;; mode stays enabled here — it provides the machinery (style/save
+;; hooks that re-detect the family for opted-in buffers).
+;;
+;; A non-obvious dependency while in document mode: without a
 ;; buffer-local family remap in place, Android's sfnt-android font
 ;; backend won't pick a bold variant for TeX-fold's overlay display
 ;; strings, so `\textbf{X}' folds render regular-weight even though the
-;; fold text property says `:weight bold'.  Don't disable it lightly.
-;; All bundled TTFs have been validated in-frame — a malformed TTF can
-;; hard-crash the app's font backend on face-remap.
+;; fold text property says `:weight bold'.  (Consequence: a fold created
+;; per-item in RAW mode shows that regular-weight rendering until
+;; C-c p b applies the remap.)  All bundled TTFs have been validated
+;; in-frame — a malformed TTF can hard-crash the app's font backend on
+;; face-remap.
 
 (flow-load "latex-font-sync/latex-font-sync")
 

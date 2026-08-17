@@ -154,14 +154,19 @@ otherwise the section."
 ;; working for muscle memory and for any stale keybinding.
 (defalias 'my/latex-preview-at-point #'flow-latex-preview-at-point)
 
-;;; --- Unified display controls: previews + folds on one keymap -------------
+;;; --- Unified display controls: previews + folds + font on one keymap ------
 ;;
-;; C-c p is the single "what does this buffer show" prefix: each key
-;; drives BOTH the preview pipeline and TeX-fold.  Folding itself is
-;; strictly on-demand (no fold-on-open, no fold-on-insert — see
-;; flow-latex.el); these commands are how folds get created.  Syntax
-;; highlighting (font-latex) is a separate always-on layer and is never
-;; touched here.
+;; C-c p is the single "what does this buffer show" prefix, toggling
+;; between two buffer states:
+;;   raw code  — default (code) font, no folds, no previews.  How every
+;;               buffer opens; C-c p c returns here.
+;;   document  — doc font (latex-font-sync), markup folded, math
+;;               previewed; C-c p b enters it.
+;; C-c p p is the per-item control (preview or fold at point) and never
+;; touches the buffer font — that is a buffer-wide property.  Nothing
+;; folds, previews, or re-fonts on its own (see flow-latex.el and
+;; latex-font-sync.el).  Syntax highlighting (font-latex) is a separate
+;; always-on layer and is never touched here.
 
 (defun flow-preview--fold-ready-p ()
   "Non-nil when TeX-fold commands are usable in the current buffer."
@@ -199,19 +204,27 @@ AUCTeX folds them per-region, not per-item."
    (t (preview-section))))
 
 (defun flow-latex-display-buffer ()
-  "Fold all markup and render all previews in the buffer."
+  "Enter document mode: document font, all markup folded, all previews.
+The font is applied FIRST — `latex-font-sync-apply' changes the
+buffer's character metrics and clears any stale previews, and
+`flow-preview--optical-factor' must see the synced family so the
+previews rendered next come out at factor 1."
   (interactive)
+  (when (fboundp 'latex-font-sync-apply)
+    (latex-font-sync-apply))
   (when (flow-preview--fold-ready-p)
     (TeX-fold-buffer))
   (preview-buffer))
 
 (defun flow-latex-display-clearout-buffer ()
-  "Remove every preview and fold from the buffer.
+  "Back to raw code: no previews, no folds, default (code) font.
 Font-lock styling (bold \\textbf args, \\verb face, …) stays."
   (interactive)
   (preview-clearout-buffer)
   (when (flow-preview--fold-ready-p)
-    (TeX-fold-clearout-buffer)))
+    (TeX-fold-clearout-buffer))
+  (when (fboundp 'latex-font-sync-revert)
+    (latex-font-sync-revert)))
 
 (with-eval-after-load 'latex
   (define-key LaTeX-mode-map (kbd "C-c p p") #'flow-latex-display-at-point)

@@ -254,14 +254,23 @@ Nil on a TTY (no font backend) or when no candidate is installed."
 (defvar-local my/latex-current-family nil
   "The family string currently applied to this buffer via `my/latex-face-remap-cookie'.")
 
+(defvar-local my/latex-font-sync-wanted nil
+  "Non-nil when this buffer has opted into the document font.
+Font sync is on-demand (the C-c p display keys, same contract as
+folding/previews): buffers open in the default code font, and the
+mode's open/style/save hooks apply the document font only in buffers
+where `latex-font-sync-apply' has set this flag.")
+
 (defun my/latex-apply-family ()
   "Compute the desired family for this buffer and apply it if changed.
+No-op unless the buffer opted in via `latex-font-sync-apply'.
 The global default face is untouched; the remap sets `:family' and a
 RELATIVE `:height' multiplier from `my/latex-font-optical-scale-alist',
 so the document font reads at the same optical size as the code font
 (see that alist's docstring — previews track the change through the
 effective-font DPI)."
-  (when (and (derived-mode-p 'LaTeX-mode)
+  (when (and my/latex-font-sync-wanted
+             (derived-mode-p 'LaTeX-mode)
              (display-graphic-p))
     (let* ((intended (my/latex-detect-intended-family))
            (family   (and intended (my/latex-resolve-family intended)))
@@ -283,6 +292,27 @@ effective-font DPI)."
         ;; at the correct DPI (mirrors the text-scale-mode-hook in init.el).
         (when (fboundp 'preview-clearout-buffer)
           (preview-clearout-buffer))))))
+
+(defun latex-font-sync-apply ()
+  "Opt this buffer into the document font and apply it now.
+From here on the mode's style/save hooks keep it in sync (a preamble
+edit + save re-selects the family).  Undone by `latex-font-sync-revert'."
+  (interactive)
+  (setq my/latex-font-sync-wanted t)
+  (my/latex-apply-family))
+
+(defun latex-font-sync-revert ()
+  "Restore the default (code) font and opt this buffer out of syncing.
+Removes the family remap; stale preview overlays are cleared because
+their pixel size was computed against the document font's metrics."
+  (interactive)
+  (setq my/latex-font-sync-wanted nil)
+  (when my/latex-face-remap-cookie
+    (face-remap-remove-relative my/latex-face-remap-cookie)
+    (setq my/latex-face-remap-cookie nil
+          my/latex-current-family nil)
+    (when (fboundp 'preview-clearout-buffer)
+      (preview-clearout-buffer))))
 
 ;;; --- Diagnostic command -------------------------------------------------
 
@@ -380,12 +410,15 @@ save once styles have been applied."
 
 ;;;###autoload
 (define-minor-mode latex-font-sync-mode
-  "Global minor mode: sync each LaTeX buffer's :family to its document font.
+  "Global minor mode: sync a LaTeX buffer's :family to its document font.
 When enabled, `my/latex-apply-family' runs on `LaTeX-mode-hook',
 `TeX-update-style-hook', and (buffer-locally in every LaTeX buffer)
-`after-save-hook'.  Enabled by default from init.el; a bad TTF can crash
-Android Emacs's font backend on face-remap, so all bundled candidates
-must be validated in-frame before shipping."
+`after-save-hook' — but applies only in buffers that opted in via
+`latex-font-sync-apply' (the C-c p b display key); everything else
+stays in the default code font (`latex-font-sync-revert' / C-c p c
+returns to it).  Enabled from init.el; a bad TTF can crash Android
+Emacs's font backend on face-remap, so all bundled candidates must be
+validated in-frame before shipping."
   :global t
   :group 'latex-font-sync
   (if latex-font-sync-mode

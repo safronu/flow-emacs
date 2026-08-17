@@ -65,7 +65,9 @@
 (flow-load "flow-gptel")      ; C-c g …: LLM chat via the Claude Code CLI
 (flow-load "flow-agent-shell"); C-c a …: agentic coding, Claude Code over ACP
 
-;; Buffer font follows the document's font package.  The TeX Gyre and
+;; Buffer font follows the document's font package — on demand: buffers
+;; open in the code font, C-c p b applies the document font, C-c p c
+;; reverts (same contract as folds/previews).  The TeX Gyre and
 ;; Latin Modern families are installed system-wide by TeX Live on this
 ;; machine (fontconfig finds their OTFs — no bundled TTFs needed, that
 ;; dance is Android-only).

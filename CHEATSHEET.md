@@ -10,17 +10,19 @@ Emacs (`org.gnu.emacs`) + Termux TeX Live.
 3. First launch installs `auctex cdlatex yasnippet ace-window org-fragtog`
    (+ `avy` as ace-window's dep) from MELPA — needs network.
 
-## Display: previews + folds on one prefix
+## Display: previews + folds + font on one prefix
 
-`C-c p` controls everything the buffer *shows* — both the inline PNG
-previews and TeX-fold overlays. Nothing folds or previews on its own;
-these keys are the only triggers.
+`C-c p` controls everything the buffer *shows*, switching between two
+states. **Raw code** (how every buffer opens): default mono font, no
+folds, no previews. **Document**: the document's own font
+(`latex-font-sync`), markup folded, math previewed. Nothing folds,
+previews, or re-fonts on its own; these keys are the only triggers.
 
 | Keys        | Action                                             |
 | ----------- | -------------------------------------------------- |
-| `C-c p p`   | In math: preview the formula. Elsewhere: fold the macro/environment at point (on an existing fold: unfold it) |
-| `C-c p b`   | Fold all markup + preview the whole buffer         |
-| `C-c p c`   | Clear all previews and folds (syntax colors stay)  |
+| `C-c p p`   | In math: preview the formula. Elsewhere: fold the macro/environment at point (on an existing fold: unfold it). Never touches the font |
+| `C-c p b`   | Document mode: apply doc font + fold all markup + preview the whole buffer |
+| `C-c p c`   | Raw code: clear previews and folds, restore the default font (syntax colors stay) |
 | `C-c C-p C-p` | AUCTeX default: preview at point                 |
 
 Point inside `$…$`, `\[…\]`, or an env like `equation` — hit `C-c p p`.
@@ -68,10 +70,11 @@ NOT folded — preview it instead with `C-c p p`.
 | `C-c C-o C-e` | Fold current environment (hides its body — `C-c p p` folds just the `\begin`/`\end` markers) |
 | `C-c C-o C-m` | Fold macro at point                       |
 
-Buffer text is set to the document's own font (via `latex-font-sync`),
-while macro syntax stays in a monospace face (Droid Sans Mono by default).
-`M-x my/latex-font-explain` shows why the document font is what it is;
-override with `M-x my/latex-font-try-family`.
+In document mode (`C-c p b`) buffer text is set to the document's own
+font (via `latex-font-sync`), while macro syntax stays in a monospace
+face (Droid Sans Mono by default); `C-c p c` puts the whole buffer back
+in the default mono font. `M-x my/latex-font-explain` shows why the
+document font is what it is; override with `M-x my/latex-font-try-family`.
 
 ## Windows (everything via M-o)
 
