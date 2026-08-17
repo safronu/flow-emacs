@@ -119,6 +119,17 @@
 (when flow-eink-p
   (blink-cursor-mode -1))
 
+;; Grow the region semantically from point: C-= selects the word, again
+;; the phrase, again the paragraph, …; a negative argument (C-- C-=)
+;; shrinks it back.  Chosen over expreg after testing both in AUCTeX
+;; buffers (2026-08-17): expreg has no tree-sitter grammar for LaTeX,
+;; so its only steps there are word -> paragraph, while expand-region's
+;; text-mode expansions stop at the phrase/sentence in between.  C-= is
+;; unbound in the full .tex stack (AUCTeX, cdlatex, flow modules) and
+;; in core Emacs.  Works on a tty, so all three profiles get it.
+(use-package expand-region
+  :bind ("C-=" . er/expand-region))
+
 ;;; --- Theme and fonts ------------------------------------------------------
 
 (when (and flow-theme (display-graphic-p))

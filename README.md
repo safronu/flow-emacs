@@ -47,6 +47,12 @@ skipped otherwise; see `core/flow-deadlines.el`.
 - **Termux TeX Live 2026** (`scheme-infraonly` + a few packages) providing
   `pdflatex`, `dvisvgm`, `mutool`, `gs`.
 - **CDLaTeX + YaSnippet** for one-keystroke math (`mm`, `dm`, `fr`, `bmat`, …).
+- **LLM chat + rewrite** (`C-c g`) through the local Claude Code CLI —
+  no API keys. The signature move: type a description like `Euler's
+  formula` where the math belongs, `C-c g r`, and the line is replaced
+  by real LaTeX (no region needed — it falls back to the current
+  line). `C-=` (expand-region) grows a selection semantically when you
+  do want one.
 - A `latex-scratch` command that opens a scratch `.tex` file in Emacs.
 - A `notes-init` command that scaffolds a Stacks-style multi-chapter
   math-notes project with RefTeX-navigable cross-references.
@@ -275,6 +281,10 @@ See [`DEPLOY.md`](./DEPLOY.md). The short version:
   `C-c p b` to see it in the browser.
 - Deadlines: `C-c d d` the live agenda, `C-c d c` to capture, `C-c d s` to
   sync. Present only where the private `deadlines` repo is cloned.
+- Describe → formula: type `Euler's formula` on a line, `C-c g r`, say
+  what you want — the proposed LaTeX shows as an overlay, `C-c r a`
+  accepts. With a region active it rewrites the region instead; `C-=`
+  grows a selection from point when you need a precise one.
 - Full cheatsheet: [`CHEATSHEET.md`](./CHEATSHEET.md).
 
 ## Troubleshooting

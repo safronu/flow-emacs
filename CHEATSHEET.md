@@ -102,6 +102,21 @@ Works from a single window too: `M-o b` splits side-by-side, `M-o v`
 splits top/bottom. The classic `C-x 2/3/0/1` keys still work if you
 ever want them.
 
+## Selecting text
+
+| Keys        | Action                                             |
+| ----------- | -------------------------------------------------- |
+| `C-=`       | Grow the region from point: word → phrase → paragraph … (expand-region) |
+| `C-- C-=`   | Shrink it back one step                            |
+| `C-SPC` … `C-x C-x` | Mark set *before* typing; afterwards re-selects exactly what you typed |
+| `M-@` / `C-M-SPC` / `M-h` | Built-ins: mark word / sexp / paragraph at point |
+
+`C-=` is a Ctrl+punctuation chord — the GUI Android Emacs takes it
+natively, but a terminal may have no encoding for it; in Termux
+`emacs -nw` use `M-x er/expand-region` if the key doesn't register.
+For the "rewrite what I just typed" case you usually need no selection
+at all — `C-c g r` falls back to the current line (see *LLM chat*).
+
 ## Display (e-ink)
 
 Syntax, diffs, and org states are styled by typography instead of
@@ -244,11 +259,20 @@ in `android-emacs/init.el`, not your login.
 | `C-c g g` | Open / switch to a chat buffer                  |
 | `C-c g s` | Send region, or buffer up to point              |
 | `C-c g m` | gptel menu (model, backend, system prompt, …)   |
-| `C-c g r` | Rewrite region                                  |
+| `C-c g r` | Rewrite region — no region: the current line    |
 | `C-c g a` | Add region / buffer to context                  |
 | `C-c g f` | Add file to context                             |
 | `C-c g k` | Abort the request in this buffer                |
 | `C-c RET` | Inside a chat buffer: send (gptel's own key)    |
+
+**Describe → LaTeX** (the typical rewrite): type a plain description
+where the math should go — `Euler's formula` on its own line — and hit
+`C-c g r` straight away. With no region active it selects the current
+line for you (whitespace-trimmed), so there is no marking step; with a
+region active it rewrites exactly the region. Type the instruction
+("write it as real LaTeX"), then accept with `C-c r a` when it's
+ready. For a phrase typed mid-line, select it first — `C-=` (see
+*Selecting text*) or set the mark before typing and `C-x C-x` after.
 
 **Rewrite lifecycle** (`C-c g r` on a region): the region gets a
 `REWRITE` title that cycles *Waiting…* (includes the model's thinking

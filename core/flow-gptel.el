@@ -17,7 +17,7 @@
 ;;
 ;; Keys (global, prefix C-c g):
 ;;   g  open/switch to a chat buffer    s  send region / buffer-to-point
-;;   m  gptel menu (model, backend, …)  r  rewrite region
+;;   m  gptel menu (model, backend, …)  r  rewrite region (or current line)
 ;;   a  add region/buffer to context    f  add file to context
 ;;   k  abort the request in this buffer
 ;; Inside a chat buffer, C-c RET also sends (gptel-mode's binding).
@@ -58,7 +58,7 @@
   (keymap-set flow-gptel-map "g" #'gptel)
   (keymap-set flow-gptel-map "s" #'gptel-send)
   (keymap-set flow-gptel-map "m" #'gptel-menu)
-  (keymap-set flow-gptel-map "r" #'gptel-rewrite)
+  (keymap-set flow-gptel-map "r" #'flow-gptel-rewrite-dwim)
   (keymap-set flow-gptel-map "a" #'gptel-add)
   (keymap-set flow-gptel-map "f" #'gptel-add-file)
   (keymap-set flow-gptel-map "k" #'gptel-abort)
@@ -87,6 +87,38 @@
   ;; symbol — the rewrite callback calls `symbol-name' on it before
   ;; funcalling, so a lambda errors.
   (setq gptel-rewrite-default-action #'flow-gptel--rewrite-advertise-on-ready))
+
+;; `gptel-rewrite' hard-errors without an active region (the final
+;; branch of its interactive spec).  The frequent flow here is: type a
+;; short description ("Euler's formula") where the math should go, then
+;; have it rewritten into real LaTeX — and manually re-selecting the
+;; text just typed (C-SPC, move point back) was the friction.  The
+;; fallback unit is the CURRENT LINE: tested 2026-08-17 against
+;; expand-region, expreg and thing-at-point in AUCTeX buffers, the line
+;; is the only candidate that selects exactly the typed phrase with
+;; zero extra keys in the common case (phrase on its own line), and the
+;; rule "no region = this line" is trivially predictable.  Sentence
+;; detection drags in preceding markup (`\begin{document}' etc.), and
+;; expreg has no tree-sitter grammar for LaTeX so it can only offer
+;; word -> paragraph.  For a phrase typed mid-line, select it manually
+;; (C-= from flow-core grows the region from point) — or set the mark
+;; before typing and C-x C-x afterwards.
+(defun flow-gptel-rewrite-dwim ()
+  "Start `gptel-rewrite' on the region, else on the current line.
+With no active region, select this line's text (sans surrounding
+whitespace) first, so the rewrite replaces exactly it.  With
+rewrite overlays pending and no region, fall through untouched so
+the key still opens gptel's rewrite-actions menu."
+  (interactive)
+  (unless (or (use-region-p) (bound-and-true-p gptel--rewrite-overlays))
+    (let ((beg (save-excursion (back-to-indentation) (point)))
+          (end (save-excursion
+                 (end-of-line) (skip-chars-backward " \t") (point))))
+      (when (>= beg end)
+        (user-error "Current line is empty — nothing to rewrite"))
+      (goto-char end)
+      (push-mark beg t t)))
+  (call-interactively #'gptel-rewrite))
 
 (defun flow-gptel--rewrite-advertise-on-ready (ov)
   "Show the rewrite action keys in OV's title, without stealing input.
