@@ -65,6 +65,23 @@
  '(mode-line-inactive ((t (:foreground "#777777" :background "#dddddd"
                            :box (:line-width (1 . 4) :color "#dddddd")))))
  '(mode-line-buffer-id ((t (:weight ultra-bold))))
+ ;; ace-window's per-window letter (`ace-window-display-mode', flow-core),
+ ;; leftmost in every mode line.  The default inherits mode-line-buffer-id,
+ ;; which on an INACTIVE bar renders #777777-on-#dddddd -- and the inactive
+ ;; windows are precisely the ones M-o jumps to.  A WHITE chip with a big
+ ;; black letter, not inverse video: a black chip at the bar's left edge
+ ;; sits flush against the neighboring window's solid-black active bar and
+ ;; the two fuse into one smear (tried 2026-08-17), while white touches
+ ;; nothing else on any bar -- it pops against the active bar's black and
+ ;; still reads against the inactive #dddddd because the letter itself is
+ ;; full ink.  :height 1.4 because a mode-line-sized glyph is spotting-
+ ;; distance illegible on the 13" panel; the bar grows to fit once,
+ ;; uniformly (every window carries a letter).  The white box is pure
+ ;; padding: +3px per side horizontally, vertical 1 so it adds nothing
+ ;; the enlarged glyph doesn't already claim.
+ '(aw-mode-line-face  ((t (:foreground "#000000" :background "#ffffff"
+                           :weight ultra-bold :height 1.4
+                           :box (:line-width (3 . 1) :color "#ffffff")))))
  '(header-line        ((t (:foreground "#000000" :background "#dddddd" :weight medium))))
 
  ;; --- Diagnostics: severity as loudness, never as hue --------------

@@ -149,8 +149,16 @@
 ;; m = swap, ? = help, C-g = cancel.  `?j' is out of `aw-keys' because
 ;; `j' is itself a dispatch action (select buffer); the two sets must not
 ;; overlap.
+;;
+;; `ace-window-display-mode' keeps each window's selection letter in its
+;; mode line at all times, so the target letter is known BEFORE M-o —
+;; on e-ink that also means the big overlay letters (a repaint) can be
+;; skipped entirely: M-o, letter, done.  The mode must be on from
+;; startup, hence `:demand' — with only `:bind' the package (and the
+;; mode-line letters) wouldn't exist until the first M-o.
 
 (use-package ace-window
+  :demand t
   :bind ("M-o" . ace-window)
   :config
   (setq aw-keys '(?a ?s ?d ?f ?g ?h ?k ?l)  ; home row, minus dispatch char j
@@ -158,9 +166,32 @@
         ;; The default dims the whole frame during selection, i.e. repaints
         ;; every pixel.  Fine on an LCD, a flash and lingering ghosts on e-ink.
         aw-background (not flow-eink-p)
+        ;; The mode-line letters (below) are always visible, so the big
+        ;; in-window overlay letters during M-o are redundant — and on
+        ;; e-ink each overlay is another repaint + ghost.  nil only takes
+        ;; effect while `ace-window-display-mode' is on; if that enable
+        ;; is ever removed, remove this too or M-o shows no letters at all.
+        aw-display-mode-overlay nil
         aw-scope 'frame)
   (set-face-attribute 'aw-leading-char-face nil
-                      :height flow-aw-leading-char-height :weight 'bold))
+                      :height flow-aw-leading-char-height :weight 'bold)
+  (ace-window-display-mode 1)
+  ;; Re-wrap the entry the mode just installed at the head of
+  ;; `mode-line-format': a plain space fences the letter off the window
+  ;; edge, and " │ " fences it from the rest of the mode line.  The
+  ;; fences deliberately carry NO face, so they render in the bar's own
+  ;; mode-line/-inactive colors, not the letter chip's.  Keyed on the
+  ;; same `ace-window-display-mode' guard symbol, so toggling the mode
+  ;; off removes our entry exactly as it would its own (and a re-enable
+  ;; would re-install the package's bare letter — re-run this setq-
+  ;; default after it if that ever becomes a live path).
+  (setq-default mode-line-format
+                (cons '(ace-window-display-mode
+                        (:eval (let ((path (window-parameter (selected-window)
+                                                             'ace-window-path)))
+                                 (and path (list " " path " │ ")))))
+                      (assq-delete-all 'ace-window-display-mode
+                                       (default-value 'mode-line-format)))))
 
 (provide 'flow-core)
 ;;; flow-core.el ends here
