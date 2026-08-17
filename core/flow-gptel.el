@@ -22,6 +22,11 @@
 ;;   k  abort the request in this buffer
 ;; Inside a chat buffer, C-c RET also sends (gptel-mode's binding).
 ;;
+;; Reusable prompts live in core/prompts/ (one NAME.txt per prompt):
+;; each is a named directive in the gptel menu, and rewrite-latex.txt
+;; is the system message for C-c g r in TeX buffers.  Files are read
+;; per request — edit and the next request uses the new text.
+;;
 ;; Non-obvious constraints (details in gptel-claude-code.el's Commentary):
 ;; - Streaming needs `gptel-use-curl' non-nil (the default) even though
 ;;   no curl process ever runs — gptel's streaming gate consults it.
@@ -36,6 +41,40 @@
 
 ;; Loaded by the time a rewrite completes (the request comes from it).
 (declare-function gptel--rewrite-update-status "gptel-rewrite")
+(defvar gptel-directives)               ;defined by gptel, required before use
+
+;; Reusable prompt library: one plain-text file per prompt in
+;; core/prompts/, read straight from the repo like core/snippets/.
+;; Contents are read at REQUEST time, so editing a file changes the
+;; very next request — no reload, no re-eval.  Each file also becomes
+;; a named directive in `gptel-menu' (registered on first gptel use);
+;; ADDING or removing a file needs `M-x flow-gptel-reload-prompts' (or
+;; a restart) for the menu entry, content edits do not.
+
+(defconst flow-gptel-prompts-directory (flow-core-file "prompts")
+  "Directory of reusable prompts, one plain-text NAME.txt per prompt.")
+
+(defun flow-gptel-prompt (name)
+  "Return the prompt stored as NAME.txt in `flow-gptel-prompts-directory'.
+Reads the file on every call, so edits apply to the next request.
+Returns nil if the file is missing or unreadable."
+  (let ((file (expand-file-name (concat name ".txt")
+                                flow-gptel-prompts-directory)))
+    (when (file-readable-p file)
+      (with-temp-buffer
+        (insert-file-contents file)
+        (string-trim (buffer-string))))))
+
+(defun flow-gptel-reload-prompts ()
+  "Register every core/prompts/*.txt as a named entry in `gptel-directives'.
+Each entry is a closure calling `flow-gptel-prompt', so the menu
+name is stable while the file contents stay live-editable."
+  (interactive)
+  (require 'gptel)                     ;defines `gptel-directives'
+  (dolist (file (directory-files flow-gptel-prompts-directory nil "\\.txt\\'"))
+    (let ((name (file-name-base file)))
+      (setf (alist-get (intern name) gptel-directives)
+            (lambda () (flow-gptel-prompt name))))))
 
 ;; Point the CLI at its login when Emacs's HOME isn't the one that holds
 ;; it (Android: the app's private dir, vs Termux's ~/.claude).  Verified
@@ -64,6 +103,7 @@
   (keymap-set flow-gptel-map "k" #'gptel-abort)
   :config
   (flow-load "gptel-claude-code/gptel-claude-code")
+  (flow-gptel-reload-prompts)
   (setq-default gptel-backend (gptel-make-claude-code "Claude-Code")
                 gptel-model 'sonnet)
   (gptel-make-claude-code "Claude-Agent"
@@ -132,6 +172,24 @@ inside the rewritten region; RET there opens the full chooser."
                          '(("C-c r a" . "accept") ("C-c r k" . "reject")
                            ("C-c r r" . "iterate") ("RET" . "more"))
                          " · "))))
+
+;; TeX-specific rewrite directive, from core/prompts/rewrite-latex.txt.
+;; `gptel-rewrite-directives-hook' runs its functions in the buffer
+;; being rewritten until one returns non-nil; that string REPLACES the
+;; entire default rewrite system message, so the prompt file must
+;; restate the "ONLY the replacement text, no fences" guardrail itself.
+;; Returns nil outside TeX buffers — and when the file is missing — so
+;; every other mode keeps gptel's stock mode-aware directive.  AUCTeX
+;; 14's LaTeX-mode derives from TeX-mode and the built-in latex-mode
+;; from tex-mode, so the two parents cover both stacks.  The add-hook
+;; runs before gptel-rewrite's defcustom loads; that is the standard
+;; safe pattern (custom-declare-variable keeps an existing value).
+(defun flow-gptel--rewrite-directive-tex ()
+  "Rewrite directive for TeX buffers, read from prompts/rewrite-latex.txt."
+  (when (derived-mode-p 'TeX-mode 'tex-mode)
+    (flow-gptel-prompt "rewrite-latex")))
+
+(add-hook 'gptel-rewrite-directives-hook #'flow-gptel--rewrite-directive-tex)
 
 ;; Rebind the rewrite action keys.  The overlay's keymap outranks the
 ;; major mode whenever point is inside a pending rewrite, and gptel's
