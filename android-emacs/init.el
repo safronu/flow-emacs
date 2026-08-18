@@ -15,6 +15,7 @@
 ;;   C-c p p / b / c   preview at point / buffer / clear   (flow-preview)
 ;;   C-c p p / b / c   in .md: live preview / browser / close (flow-markdown)
 ;;   C-c g …           LLM chat via the Claude Code CLI    (flow-gptel)
+;;   C-c a …           agentic coding: agent-shell + Claude Code (flow-agent-shell)
 ;;   C-c e f           cycle the default font height       (eink-faces)
 ;;   C-c e g           full redraw, clears e-ink ghosting  (eink-faces)
 
@@ -62,7 +63,15 @@
       ;; Same story for the `claude' CLI: the binary is reachable through
       ;; the Termux PATH added below, but its login lives in Termux's
       ;; ~/.claude, not in this app's HOME.  See `flow-gptel'.
-      flow-claude-config-dir "/data/data/com.termux/files/home/.claude")
+      flow-claude-config-dir "/data/data/com.termux/files/home/.claude"
+      ;; The ACP adapter must go through the repo's Termux-side wrapper:
+      ;; npm's own bin shim has an `env node' shebang that only works
+      ;; under termux-exec (which this app lacks), and the wrapper also
+      ;; exports CLAUDE_CODE_EXECUTABLE — mandatory here, because Termux
+      ;; node reports platform "android" so the SDK's own CLI resolution
+      ;; always fails.  See bin/claude-agent-acp.
+      flow-claude-acp-command
+      (list (expand-file-name "bin/claude-agent-acp" flow-root)))
 
 ;;; --- Termux binaries on PATH ---------------------------------------------
 ;;
@@ -91,6 +100,12 @@
 ;; 2026-08-14 migration put a working CLI on the tablet; the `exec-path'
 ;; block above finds it, `flow-claude-config-dir' supplies the login.
 (flow-load "flow-gptel")      ; C-c g …: LLM chat via the Claude Code CLI
+;; Agentic coding over ACP, wired here 2026-08-18: the adapter runs on
+;; Termux's bionic node (plain JS — only the CLI binary needed patching)
+;; and drives the patched glibc `claude' via CLAUDE_CODE_EXECUTABLE,
+;; verified end-to-end on-device.  Same subscription login as gptel,
+;; supplied by `flow-claude-config-dir' above.
+(flow-load "flow-agent-shell"); C-c a …: agentic coding, Claude Code over ACP
 
 ;;; --- Buffer font follows the document font --------------------------------
 ;;

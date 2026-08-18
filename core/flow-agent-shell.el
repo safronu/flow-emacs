@@ -26,12 +26,14 @@
 ;; with "package unavailable" — run `M-x package-refresh-contents' once
 ;; and restart (never add an automatic refresh; see flow-core).
 ;;
-;; Tablet phase (not yet wired): the module itself is device-neutral.
-;; What the Android profile will need before loading it: (1) the adapter
-;; runnable from the native Emacs — Node >= 22 lives in Termux, so
-;; `flow-claude-acp-command' must point at a Termux-side wrapper; (2)
-;; `flow-claude-config-dir' set, as for flow-gptel, so the adapter's
-;; Claude finds Termux's ~/.claude login.
+;; On the tablet (wired 2026-08-18): same module, different plumbing per
+;; profile.  The android profile points `flow-claude-acp-command' at
+;; bin/claude-agent-acp — a Termux-side wrapper that runs the adapter
+;; under Termux's node and exports CLAUDE_CODE_EXECUTABLE to the patched
+;; glibc `claude' (the SDK's own CLI resolution can never succeed there:
+;; Termux node reports platform "android", so npm skips every
+;; platform-specific CLI dep) — and sets `flow-claude-config-dir' so the
+;; CLI finds Termux's ~/.claude login, exactly as for flow-gptel.
 
 ;;; Code:
 
@@ -84,6 +86,19 @@ repo, or to any directory regardless of what buffer is current."
   ;; Subscription login, not ANTHROPIC_API_KEY.
   (setq agent-shell-anthropic-authentication
         (agent-shell-anthropic-make-authentication :login t))
+  ;; Claude is the only agent this config sets up, so resolve EVERY
+  ;; entry point to it unconditionally.  `C-c a a' passes its config
+  ;; explicitly, but the package's other entry points (M-x agent-shell,
+  ;; the viewport toggles, agent-shell-send-*) resolve through this
+  ;; variable and otherwise fall back to a 19-agent completing-read
+  ;; picker — where a plain RET returns "" (empty input bypasses
+  ;; require-match), matches nothing, and errors with the baffling
+  ;; "No agent config found".  The full-alist value, not the shorter
+  ;; 'claude-code symbol, on purpose: symbol designators are newer than
+  ;; the laptop's installed agent-shell, while the alist form is
+  ;; accepted by every version.
+  (setq agent-shell-preferred-agent-config
+        (agent-shell-anthropic-make-claude-code-config))
   (when flow-claude-acp-command
     (setq agent-shell-anthropic-claude-acp-command flow-claude-acp-command)))
 

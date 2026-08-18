@@ -151,7 +151,21 @@ log "Linking helper binaries onto ~/.local/bin"
 link "${REPO}/bin/latex-scratch"         "${HOME_}/.local/bin/latex-scratch"
 link "${REPO}/bin/latex-preview-server"  "${HOME_}/.local/bin/latex-preview-server"
 link "${REPO}/bin/notes-init"            "${HOME_}/.local/bin/notes-init"
+link "${REPO}/bin/claude-agent-acp"      "${HOME_}/.local/bin/claude-agent-acp"
 chmod +x "${REPO}/bin/"*
+
+# Claude Code ACP adapter for agent-shell (C-c a in the native Emacs).
+# Plain JS on Termux's bionic node; the CLI it drives is the patched
+# glibc `claude' already on this device (bin/claude-agent-acp exports
+# CLAUDE_CODE_EXECUTABLE).  npm never touches $PREFIX/bin/claude here —
+# the adapter is a different package with a different bin name.
+if [ ! -e "${PREFIX_}/lib/node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js" ]; then
+    log "Installing the Claude Code ACP adapter (needs nodejs >= 22)"
+    have npm || pkg install -y nodejs
+    npm install -g @agentclientprotocol/claude-agent-acp
+else
+    log "Claude Code ACP adapter already installed — skipping"
+fi
 
 # Only the ENTRY POINTS are linked.  Each profile's init.el resolves its
 # own symlink (file-truename) to find the repo, and loads core modules,
@@ -267,7 +281,8 @@ cat <<EOF
 Next steps (manual):
   1. Launch the native Emacs app on the Boox. First run will fetch MELPA
      and install auctex, cdlatex, yasnippet, ace-window (+ avy dep),
-     org-fragtog, gnu-elpa-keyring-update, telega.
+     org-fragtog, gnu-elpa-keyring-update, telega, agent-shell
+     (+ acp and shell-maker deps).
   2. Open ~/latex-scratch/test.tex; put point in a \$…\$ formula; press
      'C-c p p' to preview inline.
   3. Telegram (optional): 'M-x telega-server-build' once (links against

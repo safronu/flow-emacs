@@ -337,7 +337,7 @@ menu. The title line and the
 proposed text are pure display — never buffer text — so pdflatex,
 the live PDF and inline previews never see them.
 
-## Agentic coding (`C-c a` prefix, laptop only)
+## Agentic coding (`C-c a` prefix, laptop + native Android Emacs)
 
 `agent-shell` driving Claude Code over ACP — the agentic complement to
 `C-c g` chat: the agent edits files and runs commands, asking

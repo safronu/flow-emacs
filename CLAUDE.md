@@ -494,7 +494,7 @@ code alone.
   gptel v0.9.9.5 source the docs' line numbers cite stays at
   `~/flow/gptel-headless/gptel/` (reference only, never on load-path).
 
-## agent-shell / agentic coding (laptop only, for now)
+## agent-shell / agentic coding (laptop + native Android Emacs)
 
 - `core/flow-agent-shell.el` (module, C-c a prefix; `C-c a a` starts a
   Claude Code agent shell at the current project root, `C-c a d` at an
@@ -502,10 +502,12 @@ code alone.
   root, so `d` is how a repo SUBFOLDER is scoped).  agent-shell +
   acp.el + shell-maker, all MELPA.  The agentic complement to flow-gptel's chat: the agent edits
   files and runs commands, with per-action permission prompts and diff
-  review in Emacs.  Only `laptop-emacs/` loads it today.
+  review in Emacs.  Loaded by `laptop-emacs/` and (since 2026-08-18)
+  `android-emacs/`; `termux-emacs/` stays minimal.
 - **The agent process is NOT the `claude` binary.**  acp.el spawns the
-  `claude-agent-acp` npm adapter (wraps the Claude Agent SDK, needs
-  Node ≥ 22), which speaks ACP on stdio.  On the laptop
+  npm adapter `@agentclientprotocol/claude-agent-acp` (bin name
+  `claude-agent-acp`; wraps the Claude Agent SDK, needs Node ≥ 22),
+  which speaks ACP on stdio.  On the laptop
   `~/.local/bin/claude-agent-acp` is a hand-written wrapper pinning
   nvm's Node v22.14.0 — the nvm *default* is v16 and cannot run it, so
   don't "simplify" the wrapper away.  Adapter 0.59.0 verified by ACP
@@ -514,15 +516,57 @@ code alone.
   (`agent-shell-anthropic-make-authentication :login t`), no API keys —
   same story as gptel; a login failure means run `claude` + `/login` in
   a terminal once.
-- Knob `flow-claude-acp-command` (flow-boot) overrides the adapter
-  argv; nil = agent-shell's default, resolved via `exec-path`.
-  Reserved for the tablet phase: there the adapter must run under
-  Termux's node (the patched glibc `claude` binary story does not cover
-  the adapter — it's plain JS on bionic node, but whether the SDK it
-  wraps can drive the patched CLI is UNVERIFIED), and
-  `flow-claude-config-dir` applies exactly as it does for gptel.
+- **`agent-shell-preferred-agent-config` is set (module `:config`) to
+  the Claude Code config alist** — added 2026-08-18 after a real
+  failure on the Boox.  `C-c a a` passes its config explicitly, but
+  every other entry point (`M-x agent-shell`, viewport toggles,
+  `agent-shell-send-*`) resolves through that variable and otherwise
+  opens a 19-agent completing-read picker where a plain RET returns
+  `""` (empty input bypasses require-match), matches nothing, and
+  errors with **"No agent config found"** — which reads like a broken
+  install but is only the unanswered picker.  The value is deliberately
+  the full alist, not the newer `'claude-code` symbol designator: the
+  laptop's older agent-shell predates designators, and the alist form
+  is accepted by every version.  Diagnosis trail worth keeping: the
+  supposedly failing `C-c a a` had in fact started everything (logcat
+  showed the wrapper exec; the adapter and the patched CLI were alive
+  with a session id and the right `CLAUDE_CONFIG_DIR`) — the error came
+  from one of the picker paths, and grepping the elpa sources for the
+  exact message found the only seven sites, all `(or config … (error
+  …))` forms.
+- **On the Boox** the adapter (0.70.0) runs on Termux's bionic node
+  (v24, plain JS — no glibc patching needed) and drives the patched
+  `claude` wrapper via `CLAUDE_CODE_EXECUTABLE`.  Verified end-to-end
+  on-device 2026-08-18: initialize → session/new → session/prompt round
+  trip on the subscription login.  The pieces, all mandatory:
+  - `bin/claude-agent-acp` — Termux-side wrapper, symlinked to
+    `~/.local/bin` by install.sh, pointed at by the android profile's
+    `flow-claude-acp-command` (a knob in flow-boot; nil = agent-shell's
+    default resolved via `exec-path`, which is what the laptop uses).
+    It exists because npm's own bin shim has an `env node` shebang that
+    fails from the native Emacs (no termux-exec LD_PRELOAD there), and
+    because `CLAUDE_CODE_EXECUTABLE` must be exported: Termux node
+    reports platform **"android"**, so npm skips the SDK's
+    platform-specific CLI optional dep at install AND the adapter's own
+    resolution (which probes `…-sdk-${platform}-${arch}` packages) can
+    never find one — without the env var it throws "Claude native
+    binary not found for android-arm64".  The wrapper also unsets an
+    inherited `BUN_OPTIONS` (the same stale-relative-preload trap as
+    the gptel test suite — it would kill the CLI when the adapter is
+    debugged from inside a Claude Code session).
+  - `flow-claude-config-dir` — applies exactly as for gptel (the
+    module setenvs `CLAUDE_CONFIG_DIR`; whichever of the two modules
+    loads first wins, idempotently).
+  - The npm install (in install.sh, idempotent) does **not** conflict
+    with the "never npm install claude-code on the Boox" rule: it is a
+    different package landing on a different bin name; ~50 MB, no
+    native binaries vendored.
 - agent-shell was new to this config's elpa caches: pre-installed on
-  the laptop 2026-08-15; any other machine needs one
+  the laptop 2026-08-15 and on the Boox's native-Emacs elpa 2026-08-18
+  (batch `package-install` from Termux Emacs — both are 30.2, so the
+  .elc are interchangeable — with `HOME=/data/data/org.gnu.emacs/files`
+  and MELPA added to `package-archives`, then
+  `package-quickstart-refresh`); any other machine needs one
   `M-x package-refresh-contents` before first load or the use-package
   ensure fails loudly at startup.
 

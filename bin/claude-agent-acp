@@ -1,0 +1,32 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# claude-agent-acp — Termux-side launcher for the Claude Code ACP adapter
+# (@agentclientprotocol/claude-agent-acp, installed globally by npm via
+# install.sh).  Spawned by agent-shell/acp.el from the native Android
+# Emacs; see core/flow-agent-shell.el and the android profile's
+# `flow-claude-acp-command'.
+#
+# Why a wrapper instead of npm's own bin shim: the shim's
+# `#!/usr/bin/env node' shebang only works under termux-exec's
+# LD_PRELOAD rewriting, which the native Emacs app does not have — from
+# there it dies with "bad interpreter".  This script's full-path shebang
+# and explicit node invocation work from either app.
+
+set -e
+
+PREFIX_=/data/data/com.termux/files/usr
+ADAPTER="$PREFIX_/lib/node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js"
+
+# The adapter normally finds the CLI as a platform-specific optional dep
+# of @anthropic-ai/claude-agent-sdk — but Termux node reports platform
+# "android", so npm never installs one and resolution always fails here.
+# Point it at the patched glibc `claude' wrapper instead (same binary the
+# terminal runs; verified end-to-end under the SDK on 2026-08-18).
+export CLAUDE_CODE_EXECUTABLE="${CLAUDE_CODE_EXECUTABLE:-$PREFIX_/bin/claude}"
+
+# An inherited BUN_OPTIONS from an enclosing Claude Code session carries
+# a --preload path relative to THAT session's cwd and instantly kills the
+# CLI when spawned elsewhere (same trap as the gptel test suite — see
+# CLAUDE.md).  The `claude' wrapper recomputes its own; drop ours.
+unset BUN_OPTIONS
+
+exec "$PREFIX_/bin/node" "$ADAPTER" "$@"
