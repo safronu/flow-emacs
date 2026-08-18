@@ -235,11 +235,65 @@ window's letter stays put."
   (nconc (cl-remove-if #'window-minibuffer-p windows)
          (cl-remove-if-not #'window-minibuffer-p windows)))
 
+(defconst flow-aw--mode-line-entry
+  '(ace-window-display-mode
+    (:eval (let ((path (window-parameter (selected-window)
+                                         'ace-window-path)))
+             (and path (list " " path " │ ")))))
+  "The M-o letter as a `mode-line-format' element.
+A plain space fences the letter off the window edge, \" │ \" fences it
+from the rest of the mode line; the fences deliberately carry NO face,
+so they render in the bar's own mode-line/-inactive colors, not the
+letter chip's.  Guarded on `ace-window-display-mode', so toggling the
+mode off blanks it everywhere at once.  Lives at the head of the
+default `mode-line-format' (below) and is re-attached to formats that
+modes build from scratch (`flow-aw--mode-line-reattach').")
+
+(defun flow-aw--mode-line-format-has-letter-p (fmt)
+  "Non-nil if mode-line format FMT contains `flow-aw--mode-line-entry'."
+  (and (consp fmt) (assq 'ace-window-display-mode fmt)))
+
+(defun flow-aw--mode-line-reattach (&optional buffer)
+  "Prepend the M-o letter entry to BUFFER's own `mode-line-format'.
+For modes that replace the buffer-local format wholesale instead of
+deriving it from the default (calendar and the `calendar-set-mode-line'
+family set a bare string): wrap whatever they installed in a list led
+by `flow-aw--mode-line-entry'.  Idempotent — re-running on an already
+wrapped format changes nothing, and the mode resetting its format
+simply gets re-wrapped by the next advice run."
+  (with-current-buffer (or buffer (current-buffer))
+    (when (and mode-line-format
+               (not (flow-aw--mode-line-format-has-letter-p
+                     mode-line-format)))
+      (setq mode-line-format
+            (list flow-aw--mode-line-entry mode-line-format)))))
+
+(defvar calendar-buffer)                ; calendar.el, "*Calendar*"
+
+(defun flow-aw--calendar-mode-line-reattach (&rest _)
+  ":after advice on `calendar-update-mode-line'.
+That function rebuilds `calendar-buffer's mode line as a plain centered
+string on every cursor move — always operate on that buffer, whatever
+is current when the advice fires."
+  (let ((buf (get-buffer calendar-buffer)))
+    (when buf (flow-aw--mode-line-reattach buf))))
+
+(defun flow-aw--current-mode-line-reattach (&rest _)
+  ":after advice on `calendar-set-mode-line'.
+That one styles the CURRENT buffer's mode line (diary, holiday, lunar,
+solar popups); its STR argument must not leak into
+`flow-aw--mode-line-reattach's BUFFER parameter."
+  (flow-aw--mode-line-reattach))
+
 (defun flow-aw--lead-overlay (path leaf)
-  "Show M-o's overlay letter only where no mode line renders.
+  "Show M-o's overlay letter only where no mode line shows it already.
 LEAF is (PT . WND).  In the minibuffer the persistent chip from
 `flow-aw--minibuffer-setup' already shows the letter; only if it is
-somehow absent, prepend a temporary one (never cover the prompt)."
+somehow absent, prepend a temporary one (never cover the prompt).
+Elsewhere the overlay appears when the bar doesn't render at all
+(buffer-local `mode-line-format' nil) OR renders without our letter
+entry — a mode that built its format from scratch and that
+`flow-aw--mode-line-reattach' doesn't cover yet."
   (let ((wnd (cdr leaf)))
     (cond
      ((window-minibuffer-p wnd)
@@ -254,7 +308,9 @@ somehow absent, prepend a temporary one (never cover the prompt)."
                           (mapconcat (lambda (c) (string (avy--key-to-char c)))
                                      (reverse path) "")))
             (push ol avy--overlays-lead)))))
-     ((zerop (window-mode-line-height wnd))
+     ((or (zerop (window-mode-line-height wnd))
+          (not (flow-aw--mode-line-format-has-letter-p
+                (buffer-local-value 'mode-line-format (window-buffer wnd)))))
       (aw--lead-overlay path leaf)))))
 
 (use-package ace-window
@@ -274,22 +330,29 @@ somehow absent, prepend a temporary one (never cover the prompt)."
   (set-face-attribute 'aw-leading-char-face nil
                       :height flow-aw-leading-char-height :weight 'bold)
   (ace-window-display-mode 1)
-  ;; Re-wrap the entry the mode just installed at the head of
-  ;; `mode-line-format': a plain space fences the letter off the window
-  ;; edge, and " │ " fences it from the rest of the mode line.  The
-  ;; fences deliberately carry NO face, so they render in the bar's own
-  ;; mode-line/-inactive colors, not the letter chip's.  Keyed on the
-  ;; same `ace-window-display-mode' guard symbol, so toggling the mode
-  ;; off removes our entry exactly as it would its own (and a re-enable
+  ;; Replace the bare entry the mode just installed at the head of the
+  ;; default `mode-line-format' with our fenced one
+  ;; (`flow-aw--mode-line-entry').  Keyed on the same
+  ;; `ace-window-display-mode' guard symbol, so toggling the mode off
+  ;; removes our entry exactly as it would its own (and a re-enable
   ;; would re-install the package's bare letter — re-run this setq-
   ;; default after it if that ever becomes a live path).
   (setq-default mode-line-format
-                (cons '(ace-window-display-mode
-                        (:eval (let ((path (window-parameter (selected-window)
-                                                             'ace-window-path)))
-                                 (and path (list " " path " │ ")))))
+                (cons flow-aw--mode-line-entry
                       (assq-delete-all 'ace-window-display-mode
-                                       (default-value 'mode-line-format)))))
+                                       (default-value 'mode-line-format))))
+  ;; Calendar never shows the default mode line: `calendar-update-mode-
+  ;; line' rebuilds the buffer-local `mode-line-format' as a plain
+  ;; centered string on entry and every cursor move, and diary/holiday/
+  ;; lunar/solar popups do the same via `calendar-set-mode-line' — so
+  ;; the default format's letter entry never renders there and the
+  ;; window was unswitchable by sight.  Re-attach the entry after each
+  ;; rebuild.  Advice on not-yet-loaded functions is recorded and
+  ;; applies when calendar loads.
+  (advice-add 'calendar-update-mode-line :after
+              #'flow-aw--calendar-mode-line-reattach)
+  (advice-add 'calendar-set-mode-line :after
+              #'flow-aw--current-mode-line-reattach))
 
 (provide 'flow-core)
 ;;; flow-core.el ends here
