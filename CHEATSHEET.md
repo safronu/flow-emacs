@@ -229,6 +229,33 @@ Customers are headlines; their deadlines are the children beneath them.
 | `C-c d l` | lint — unassigned, and open >30 days overdue |
 | `C-c d s` | pull, commit, push |
 
+**The date prompt** (`org-deadline`, `C-c d c`, any `org-read-date`):
+point stays in the *minibuffer*, so calendar keys like `C-n/p/f/b`
+never reach the calendar — that is expected. Either type the date, or
+steer the calendar remotely:
+
+| Type…        | Means                                    |
+| ------------ | ---------------------------------------- |
+| `+3` / `+2w` / `+1m` | 3 days / 2 weeks / 1 month from today |
+| `fri`        | next Friday                              |
+| `sep 12` / `12` | Sep 12 / the 12th of the current month |
+| `2026-09-05` | exact date                               |
+
+| Keys              | Calendar action                      |
+| ----------------- | ------------------------------------ |
+| `S-←` / `S-→`     | Day back / forward                   |
+| `S-↑` / `S-↓`     | Week back / forward                  |
+| `M-S-←` / `M-S-→` | Month back / forward                 |
+| `M-S-↑` / `M-S-↓` | Year back / forward                  |
+| `<` / `>`         | Scroll calendar one month            |
+| `C-v` / `M-v`     | Scroll three months                  |
+| `C-.`             | Jump to today                        |
+
+`RET` accepts — typed text wins over the calendar cursor when both are
+set. Tapping a date in the calendar also selects it. The shift/meta
+arrow chords need a keyboard that actually sends those modifiers; if
+yours doesn't, type the date instead.
+
 `C-c d d` hiding an entry that `C-c d D` shows is correct, not a bug: `-Nd` on
 a DEADLINE is a per-entry lead time, and a positive global
 `org-deadline-warning-days` cannot widen it — only a negative value overrides
