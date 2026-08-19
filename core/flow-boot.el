@@ -92,6 +92,16 @@ awkward to point at.")
   "Non-nil to enable `TeX-fold-mode' in LaTeX buffers.
 Folding is on-demand (C-c p keys); nothing folds automatically.")
 
+(defvar flow-latex-build-dir ".build"
+  "Directory for TeX build artifacts, relative to each master file.
+Becomes `TeX-output-dir' (see flow-latex.el), so compiles, preview-latex's
+_region_/prv_ files, the cached preamble format and the parse info
+\(`TeX-auto-local') all land in one hidden folder instead of littering
+the notes directory.  nil restores AUCTeX's default (everything beside
+the source).  Must match `out' in flow-notes' build.sh: xr's
+cross-chapter \\externaldocument reads the other chapter's .aux from
+the output directory, so every compile has to use the same one.")
+
 (defvar flow-page t
   "Non-nil to enable `flow-page-mode' in LaTeX buffers.
 Adds \\abovedisplayskip-sized air around display math, like the

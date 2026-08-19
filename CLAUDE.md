@@ -72,6 +72,28 @@ code alone.
   only value that pairs with pdflatex+gs out of the box. `'dvisvgm'` is
   not a valid value — it silently no-ops the postprocessing. Do not try
   to "fix" this to SVG without also switching `TeX-PDF-mode` to nil.
+- **All build artifacts go to `.build/` beside the master file**
+  (`flow-latex-build-dir` knob in flow-boot → `TeX-output-dir` +
+  `TeX-auto-local` in `core/flow-latex.el`, set 2026-08-19 to stop
+  .aux/.log/`_region_`/`prv_*` litter in notes directories).  AUCTeX 14
+  carries it through compiles AND preview-latex ("prv" is treated as an
+  output extension; the preamble-cache dump keeps -output-directory and
+  TEXMFOUTPUT finds the .fmt again).  `TeX-output-dir` is `:local t` —
+  set it with `setq-default`, a plain setq at load time binds only the
+  startup buffer.  Its docstring forbids dot-directories, but
+  openout_any=p was verified on-device to accept them (the paranoid
+  check is basename-only), and xr's \externaldocument finds sibling
+  .aux files in the output dir (TeX searches it for input first).
+  Three call sites bypass AUCTeX's %(output-dir) expansion and pass the
+  flag by hand — `core/flow-live-pdf.el` (latexmk -pvc and the
+  pdflatex-on-save fallback, via `flow--live-pdf-outdir-flag`; the PDF
+  path comes from `TeX-master-output-file`) and flow-notes' `build.sh`
+  (hardcodes `out=.build`).  Keep all of them agreeing with the knob:
+  cross-chapter xr refs read the other chapter's .aux from the SHARED
+  output dir, so a chapter built by one pipeline must be visible to the
+  others.  The auto/ parse dir nests inside (`.build/auto`); AUCTeX
+  mkdirs it non-recursively, so `flow-latex--ensure-build-dir` (on
+  LaTeX-mode-hook) pre-creates the parent.
 
 ## Preview sizing
 

@@ -50,6 +50,36 @@
         font-latex-fontify-script nil
         font-latex-fontify-sectioning 1.0)
 
+  ;; Every build artifact — .aux/.log/.pdf/…, preview-latex's _region_.*
+  ;; and prv_*.fmt, the .prv image dirs — goes into one hidden folder per
+  ;; document instead of littering the notes directory.  AUCTeX 14
+  ;; carries `TeX-output-dir' through every pipeline: commands expand
+  ;; %(output-dir), "prv" counts as an output extension, the preamble
+  ;; cache keeps the -output-directory flag, and TEXMFOUTPUT is set so
+  ;; the dumped format is found again.  Verified on this TeX Live that
+  ;; openout_any=p accepts a dot-directory (the defcustom's docstring
+  ;; warns against them) and that xr's \externaldocument finds sibling
+  ;; .aux files there — TeX searches the output dir for input first.
+  ;; `setq-default' because the defcustom is `:local t': a plain setq at
+  ;; load time would only bind it in whatever buffer is current.
+  (setq-default TeX-output-dir flow-latex-build-dir)
+  ;; Parse info (TeX-parse-self/TeX-auto-save) moves under the same roof.
+  (setq TeX-auto-local (if flow-latex-build-dir
+                           (concat (file-name-as-directory flow-latex-build-dir)
+                                   "auto")
+                         "auto"))
+  ;; AUCTeX creates the auto dir NON-recursively on save (and swallows
+  ;; the error), so nesting it under the build dir needs the parent to
+  ;; exist before the first save — the first compile creates it too late.
+  (defun flow-latex--ensure-build-dir ()
+    "Create `flow-latex-build-dir' for the visited file, quietly."
+    (when (and flow-latex-build-dir buffer-file-name)
+      (ignore-errors
+        (make-directory (expand-file-name flow-latex-build-dir
+                                          (TeX-master-directory))
+                        t))))
+  (add-hook 'LaTeX-mode-hook #'flow-latex--ensure-build-dir)
+
   (when flow-latex-prettify-symbols
     (add-hook 'LaTeX-mode-hook #'prettify-symbols-mode))
 

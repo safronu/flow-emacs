@@ -89,15 +89,28 @@ Two strategies, picked by what the display backend can do:
   (expand-file-name (TeX-master-file "tex")))
 
 (defun flow--live-pdf-output ()
-  "Absolute path of the master's PDF output."
-  (expand-file-name (TeX-master-file "pdf")))
+  "Absolute path of the master's PDF output, honoring `TeX-output-dir'."
+  (expand-file-name (TeX-master-output-file "pdf")))
+
+(defun flow--live-pdf-outdir-flag ()
+  "The -output-directory flag as a one-element list, or nil.
+Compiles here run latexmk/pdflatex directly, so `TeX-output-dir' —
+which AUCTeX's own commands expand as %(output-dir) — has to be passed
+by hand or the two pipelines would build into different places.  Also
+creates the directory (pdflatex refuses to): same ensure behavior as
+AUCTeX's `TeX--output-dir-arg', minus its shell quoting, since these
+are argv lists."
+  (when TeX-output-dir
+    (list (concat "-output-directory="
+                  (TeX--master-output-dir (TeX-master-directory) t t)))))
 
 (defun flow--live-pdf-compile-once ()
   "Compile the master once with pdflatex (fallback path, after save)."
   (let ((default-directory (file-name-directory (flow--live-pdf-master))))
-    (start-process "flow-live-pdf-compile" "*flow-live-pdf*"
-                   "pdflatex" "-interaction=nonstopmode" "-synctex=1"
-                   (file-name-nondirectory (flow--live-pdf-master)))))
+    (apply #'start-process "flow-live-pdf-compile" "*flow-live-pdf*"
+           "pdflatex" "-interaction=nonstopmode" "-synctex=1"
+           (append (flow--live-pdf-outdir-flag)
+                   (list (file-name-nondirectory (flow--live-pdf-master)))))))
 
 (defun flow--live-pdf-pick-window ()
   "Ask for a target window in ace-window's language; return it.
@@ -111,11 +124,21 @@ prompt."
 
 (defun flow--live-pdf-display (pdf window)
   "Show PDF in WINDOW with auto-revert, waiting for the file to appear."
-  (if (not (file-exists-p pdf))
-      ;; First compile still running — poll until the file appears.
+  (if (not (and (file-exists-p pdf)
+                (> (or (file-attribute-size (file-attributes pdf)) 0) 0)))
+      ;; First compile still running — poll until the file has CONTENT,
+      ;; not merely exists: pdflatex creates the .pdf empty at startup
+      ;; and fills it at \end{document}.  A PDF visited while empty
+      ;; lands in fundamental-mode and stays there — auto-revert
+      ;; refreshes contents, never the major mode — so the window would
+      ;; show raw %PDF bytes as text for good.
       (run-with-timer 1 nil #'flow--live-pdf-display pdf window)
     (let ((buf (find-file-noselect pdf)))
       (with-current-buffer buf
+        ;; Rescue a buffer an earlier toggle caught empty/mid-write:
+        ;; re-run mode selection now that the file is real.
+        (when (eq major-mode 'fundamental-mode)
+          (normal-mode))
         (auto-revert-mode 1))
       (if (window-live-p window)
           (progn (set-window-buffer window buf)
@@ -152,10 +175,12 @@ when available, else with pdflatex on every save."
     (let ((window (flow--live-pdf-pick-window))   ; ask BEFORE starting anything
           (default-directory (file-name-directory (flow--live-pdf-master))))
       (setq flow--live-pdf-proc
-            (start-process "flow-live-pdf" "*flow-live-pdf*"
-                           "latexmk" "-pdf" "-pvc" "-view=none"
-                           "-interaction=nonstopmode" "-synctex=1"
-                           (file-name-nondirectory (flow--live-pdf-master))))
+            (apply #'start-process "flow-live-pdf" "*flow-live-pdf*"
+                   "latexmk" "-pdf" "-pvc" "-view=none"
+                   "-interaction=nonstopmode" "-synctex=1"
+                   (append (flow--live-pdf-outdir-flag)
+                           (list (file-name-nondirectory
+                                  (flow--live-pdf-master))))))
       (flow--live-pdf-display (flow--live-pdf-output) window)
       (message "Live PDF: latexmk -pvc watching %s"
                (file-name-nondirectory (flow--live-pdf-master)))))
