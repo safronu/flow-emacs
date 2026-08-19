@@ -630,9 +630,11 @@ code alone.
   `/data/data/org.gnu.emacs/files/.emacs.d/init.el`, `~/.local/bin/…`)
   are **symlinks** into the repo. Edit files in the repo, not through
   the symlinks.
-- Exception: `notes-template/` is a *template*. `bin/notes-init` COPIES
-  it to create a user notes project (default `~/math-notes`) — notes are
-  content, not config, and are not symlinked back into this repo.
+- The LaTeX notes template lives in its own repo at
+  `~/flow/notes-template` (extracted from this repo 2026-08-19).
+  `bin/notes-init` COPIES it to create a user notes project (default
+  `~/math-notes`) — notes are content, not config, and are not
+  symlinked back into this repo.
 - Byte-compiled `.elc` files are gitignored — they're regenerated from
   source.
 - No secrets are stored here — this repo can be published.
