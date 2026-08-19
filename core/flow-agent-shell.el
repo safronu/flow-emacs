@@ -144,6 +144,212 @@ a project: whenever ORIG-FN has candidates they are returned untouched."
                                 (if (string-suffix-p "/" f) 'folder 'file))
                 :exit-function #'flow-agent-shell--file-exit-function))))))
 
+(defun flow-agent-shell--completions-cap ()
+  "The *Completions* height cap for agent-shell popups: 1/3 frame, min 8."
+  (max 8 (/ (frame-height) 3)))
+
+(defun flow-agent-shell--completion-limit-popup (orig-fn)
+  "Around `agent-shell--trigger-completion-at-point': cap the popup height.
+Un-capped, the *Completions* window is sized by `fit-window-to-buffer'
+to fit ALL candidates — on the tablet's 46-line frame a 115-file
+project pushed it to 39 lines, squeezing the shell window to a SINGLE
+line (measured live 2026-08-19): point technically stays visible, but
+completion is blind.  A dynamic let of `completions-max-height' holds
+for the whole synchronous display no matter which buffer is current
+when the window-height action function reads it (a buffer-local value
+on the shell buffer is NOT read there — verified live), and it scopes
+the cap to agent-shell's @ and / popups only: the global value stays
+untouched for the rest of Emacs.  The live-refresh path re-renders the
+popup outside this advice and binds the same cap itself — see
+`flow-agent-shell--completion-refresh'."
+  (let ((completions-max-height (flow-agent-shell--completions-cap)))
+    (funcall orig-fn)))
+
+(defvar-local flow-agent-shell--completion-last-field nil
+  "Field text (after the @ or /) at the last candidate-list render.
+Managed by `flow-agent-shell--completion-keep-view'; compared by
+`flow-agent-shell--completion-refresh' to re-render only on change.")
+
+(defun flow-agent-shell--completion-field-text ()
+  "The current completion field text, or nil when there is no session.
+Reads the bounds from `completion-in-region--data' (START is a marker,
+END a marker advancing on insertion, so the field tracks typing)."
+  (pcase completion-in-region--data
+    (`(,start ,end . ,_)
+     (when (and (markerp start)
+                (eq (marker-buffer start) (current-buffer)))
+       (buffer-substring-no-properties start end)))))
+
+(defun flow-agent-shell--completion-refresh ()
+  "Re-render the candidate list if the field text changed since last render.
+Stock Emacs leaves *Completions* a static snapshot — typing after @
+narrows NOTHING until the next explicit completion command.  This calls
+`completion-help-at-point', the built-in list-only refresh (M-? in a
+session): it re-runs the capf and re-renders the list for the text now
+in the field, and, unlike `completion-at-point', never expands text
+into the buffer (auto-expansion mid-typing would splice \"re/\" into a
+half-typed \"co\" — unacceptable).  Gated on actual TEXT change, so
+M-n/M-p candidate navigation — also a command, also hitting the
+watchdog — does not re-render and lose the selection highlight.  Binds
+the same height cap as the trigger advice: this render path does not go
+through the trigger, and un-capped it would blow the popup back up to
+the whole frame."
+  (when-let* ((field (flow-agent-shell--completion-field-text)))
+    (unless (equal field flow-agent-shell--completion-last-field)
+      (setq flow-agent-shell--completion-last-field field)
+      (let ((completions-max-height (flow-agent-shell--completions-cap)))
+        (completion-help-at-point)))))
+
+(defvar-local flow-agent-shell--pre-completion-row nil
+  "Screen row of point in the shell window before a completion popup.
+Set and consumed by `flow-agent-shell--completion-keep-view'.")
+
+(defvar flow-agent-shell--completion-session-buffer nil
+  "The shell buffer of the live completion session, or nil.
+Global on purpose: `completion-in-region-mode' is a global minor mode,
+so there is at most one session at a time.")
+
+(defvar-local flow-agent-shell--completion-session-p nil
+  "Non-nil in a shell buffer while its completion popup is up.
+The gate variable for `flow-agent-shell--completion-nav-map' in
+`minor-mode-overriding-map-alist'; managed by
+`flow-agent-shell--completion-keep-view'.")
+
+(defun flow-agent-shell-completion-choose ()
+  "Insert the selected completion candidate — the first one if none yet.
+`minibuffer-choose-completion' acts on the candidate at point in the
+*Completions* window and errors (\"No completion here\") when nothing
+has been navigated to yet, point still sitting on the list's header —
+in that case select the first candidate and choose it."
+  (interactive)
+  (condition-case nil
+      (minibuffer-choose-completion)
+    (t (minibuffer-next-completion 1)
+       (minibuffer-choose-completion))))
+
+(defvar flow-agent-shell--completion-nav-map
+  (let ((map (make-sparse-keymap)))
+    (keymap-set map "M-p" #'minibuffer-previous-completion)
+    (keymap-set map "M-n" #'minibuffer-next-completion)
+    (keymap-set map "M-m" #'flow-agent-shell-completion-choose)
+    ;; The raw GUI event, looked up BEFORE function-key-map would
+    ;; translate it to the M-RET that `completion-in-region-mode-map'
+    ;; binds — so hardware that does deliver Alt+Enter gets the
+    ;; pick-first nicety too.
+    (keymap-set map "M-<return>" #'flow-agent-shell-completion-choose)
+    map)
+  "Candidate navigation for the @/-completion popup, on M-n/M-p/M-m.
+Emacs's own keys for this are M-<up>/M-<down>/M-RET (in
+`completion-in-region-mode-map'), but the Boox's Android layer does not
+deliver Alt+arrow or Alt+Enter chords to Emacs at all — Alt+Enter
+arrives as a BARE Enter, which comint happily treats as send, firing a
+half-typed @ref at the agent as a query — while Alt+letter provably
+arrives (M-p/M-n/M-o are this config's daily drivers).  Registered in
+the global `minor-mode-map-alist' gated on the buffer-local
+`flow-agent-shell--completion-session-p', so the binding exists ONLY
+while the popup is up — outside a session M-p/M-n stay comint history
+(and M-RET still chooses, when the hardware has it).  NOT in
+`minor-mode-overriding-map-alist': that variable is automatically
+BUFFER-LOCAL, so an add-to-list from a load lands in whichever buffer
+happened to be current and is invisible everywhere else (found the
+hard way 2026-08-19 — the entry existed, in the server's eval
+buffer).  Minor-mode maps outrank the comint/major-mode map, which is
+all that is needed; the popup's own `completion-in-region-mode-map'
+(M-<up>/M-<down>/M-RET) binds no M-letter keys, so there is no
+conflict with its higher rank.")
+
+(defun flow-agent-shell--completion-keep-view ()
+  "Restore the shell window's view after an @/-completion session.
+The *Completions* window that pops up shrinks the shell window, which
+scrolls to keep point visible — and that scroll SURVIVES the popup, so
+every completion leaves the transcript view shifted.
+
+Hard-won subtleties, each a shipped bug in an earlier version:
+- `completion-in-region-mode' can toggle MORE than once per popup as
+  keys are typed, so only the FIRST enable has the undisturbed view
+  (it fires before the first redisplay — @ is typed →
+  `post-self-insert-hook' → `completion-at-point', one command); a
+  later save would capture the scrolled view and \"restore\" that.
+  Hence save-once: keep the pending row until it has been used.
+- On disable, teardown and candidate insertion continue AFTER this
+  hook, and can scroll again.  So restore via a 0-second timer — after
+  the full command loop — and by point's SCREEN ROW rather than a raw
+  `window-start', which the inserted text would shift anyway.
+- While the popup is UP, the edited line must be actively kept on
+  screen: the shrunk shell window keeps its old top anchored, and only
+  the SELECTED window gets point forced visible by redisplay — so the
+  moment focus is in the *Completions* window (choosing by tap or
+  `switch-to-completions'), the input line at the bottom is clipped
+  and completion is blind.  A one-shot timer is NOT enough (it can
+  fire before the clipping happens and then nothing repairs it) — the
+  enable branch installs a `post-command-hook' watchdog instead, which
+  re-reveals the line after any command that hid it and removes itself
+  when the session ends.
+- A restore timer can fire while the session is still live (the
+  mid-session toggle above ends with a re-enable).  Recentering to a
+  full-height row inside the half-height window shoves the input line
+  off screen — so the restore re-stashes the row and defers to the
+  real session end instead."
+  (when (derived-mode-p 'agent-shell-mode)
+    (if completion-in-region-mode
+        (progn
+          (unless flow-agent-shell--pre-completion-row
+            (when-let* ((window (get-buffer-window)))
+              (setq flow-agent-shell--pre-completion-row
+                    (count-screen-lines (window-start window) (point) t window))))
+          (setq flow-agent-shell--completion-session-buffer (current-buffer))
+          (setq flow-agent-shell--completion-session-p t)
+          (setq flow-agent-shell--completion-last-field
+                (flow-agent-shell--completion-field-text))
+          (add-hook 'post-command-hook
+                    #'flow-agent-shell--completion-keep-input-visible))
+      (remove-hook 'post-command-hook
+                   #'flow-agent-shell--completion-keep-input-visible)
+      (setq flow-agent-shell--completion-session-buffer nil)
+      (setq flow-agent-shell--completion-session-p nil)
+      (setq flow-agent-shell--completion-last-field nil)
+      (when-let* ((row flow-agent-shell--pre-completion-row))
+        (setq flow-agent-shell--pre-completion-row nil)
+        (run-with-timer 0 nil #'flow-agent-shell--completion-restore-view
+                        (current-buffer) row)))))
+
+(defun flow-agent-shell--completion-keep-input-visible ()
+  "Re-reveal the shell's edited line while the completion popup is up.
+On the global `post-command-hook' only during a session (installed and
+removed by `flow-agent-shell--completion-keep-view'); self-removes as a
+belt-and-suspenders if the session is found dead.  Only touches the
+window when the line has actually been clipped."
+  (let ((buffer flow-agent-shell--completion-session-buffer))
+    (if (not (and completion-in-region-mode (buffer-live-p buffer)))
+        (remove-hook 'post-command-hook
+                     #'flow-agent-shell--completion-keep-input-visible)
+      ;; Live-narrow the candidate list as the field text changes.
+      ;; Only from the shell buffer itself: the field can only change
+      ;; from commands running there, and `completion-help-at-point'
+      ;; needs the shell's point.
+      (when (eq buffer (current-buffer))
+        (flow-agent-shell--completion-refresh))
+      (when-let* ((window (get-buffer-window buffer)))
+        (unless (pos-visible-in-window-p (window-point window) window)
+          (with-selected-window window
+            (recenter -1)))))))
+
+(defun flow-agent-shell--completion-restore-view (buffer row)
+  "Scroll BUFFER's window so the edited line is back at screen ROW.
+Runs from a 0-second timer scheduled on the popup's disable.  If the
+session turns out to be live again by then (mid-session toggle), the
+window is still half-height — restoring now would scroll the input line
+off screen, so re-stash ROW for the real session end instead."
+  (when-let* (((buffer-live-p buffer))
+              (window (get-buffer-window buffer)))
+    (if completion-in-region-mode
+        (with-current-buffer buffer
+          (unless flow-agent-shell--pre-completion-row
+            (setq flow-agent-shell--pre-completion-row row)))
+      (with-selected-window window
+        (recenter (min (max 0 (1- row))
+                       (1- (window-body-height window))))))))
+
 (use-package agent-shell
   ;; :defer keeps startup free: nothing loads until the key is hit.
   :defer t
@@ -182,6 +388,25 @@ a project: whenever ORIG-FN has candidates they are returned untouched."
   (when (fboundp 'agent-shell--file-completion-at-point)
     (advice-add 'agent-shell--file-completion-at-point
                 :around #'flow-agent-shell--project-files-or-filesystem))
+  ;; Un-scroll the shell after the *Completions* popup — see the
+  ;; function's docstring.  The hook is global (it must run on both the
+  ;; mode's enable and disable); the agent-shell-mode guard is inside.
+  (add-hook 'completion-in-region-mode-hook
+            #'flow-agent-shell--completion-keep-view)
+  ;; …and keep the popup itself from eating the whole frame — see the
+  ;; advice's docstring.  Same fboundp guard as above: no completion
+  ;; module, nothing to advise.
+  (when (fboundp 'agent-shell--trigger-completion-at-point)
+    (advice-add 'agent-shell--trigger-completion-at-point
+                :around #'flow-agent-shell--completion-limit-popup))
+  ;; M-n/M-p candidate navigation while the popup is up — see the nav
+  ;; map's docstring (including why minor-mode-map-alist and not the
+  ;; buffer-local overriding alist).  The commands are Emacs 29+; both
+  ;; machines run 30.
+  (when (fboundp 'minibuffer-next-completion)
+    (add-to-list 'minor-mode-map-alist
+                 (cons 'flow-agent-shell--completion-session-p
+                       flow-agent-shell--completion-nav-map)))
   ;; Subscription login, not ANTHROPIC_API_KEY.
   (setq agent-shell-anthropic-authentication
         (agent-shell-anthropic-make-authentication :login t))
