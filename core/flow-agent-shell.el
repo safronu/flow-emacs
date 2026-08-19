@@ -21,6 +21,20 @@
 ;;   a  start a Claude Code agent shell (rooted at the current project)
 ;;   d  start one in a directory chosen explicitly
 ;;
+;; One-chord access: M-n (global) runs the dwim `agent-shell' — jump to
+;; the current project's shell, create one if there is none, and from
+;; inside a shell toggle back to the previous buffer.  M-n is the
+;; companion of M-p (flow-latex-doc-mode): the 2026-08-17 enumeration
+;; found them the ONLY modifier-letter chords unbound in a .tex buffer
+;; with the full stack, and vanilla Emacs leaves both unbound globally.
+;; M-s was considered and rejected — it is Emacs's search prefix
+;; everywhere (M-s o occur, M-s . symbol isearch, the highlight
+;; family).  Known shadows, deliberate: markdown buffers keep their own
+;; M-n (markdown-next-link), and comint-derived buffers — the agent
+;; shell itself included — keep M-n as comint-next-input, so walking
+;; back down after M-p history never breaks; the return trip from a
+;; shell is M-o (ace-window), the config's window key.
+;;
 ;; agent-shell is a NEW package for this config: on a machine whose elpa
 ;; archive cache predates it, the `use-package' ensure fails at startup
 ;; with "package unavailable" — run `M-x package-refresh-contents' once
@@ -94,10 +108,13 @@ the new shell buffer, where the module's global
   ;; package; the explicit autoload keeps the binding working even if
   ;; the package's own autoloads miss it.
   (autoload 'agent-shell-anthropic-start-claude-code "agent-shell-anthropic" nil t)
+  (autoload 'agent-shell "agent-shell" nil t)
   (define-prefix-command 'flow-agent-shell-map)
   (keymap-global-set "C-c a" 'flow-agent-shell-map)
   (keymap-set flow-agent-shell-map "a" #'agent-shell-anthropic-start-claude-code)
   (keymap-set flow-agent-shell-map "d" #'flow-agent-shell-in-directory)
+  ;; See the header comment for why M-n and not M-s, and the shadows.
+  (keymap-global-set "M-n" #'agent-shell)
   :config
   ;; No ASCII-art banner: it eats most of a half-screen window and
   ;; scrolls the actually useful first response out of view.

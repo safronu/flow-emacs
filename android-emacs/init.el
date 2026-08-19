@@ -15,7 +15,7 @@
 ;;   C-c p p / b / c   preview at point / buffer / clear   (flow-preview)
 ;;   C-c p p / b / c   in .md: live preview / browser / close (flow-markdown)
 ;;   C-c g …           LLM chat via the Claude Code CLI    (flow-gptel)
-;;   C-c a …           agentic coding: agent-shell + Claude Code (flow-agent-shell)
+;;   C-c a …, M-n      agentic coding: agent-shell + Claude Code (flow-agent-shell)
 ;;   C-c e f           cycle the default font height       (eink-faces)
 ;;   C-c e g           full redraw, clears e-ink ghosting  (eink-faces)
 

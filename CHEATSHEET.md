@@ -350,11 +350,19 @@ git root.
 
 | Keys      | Action                                            |
 | --------- | ------------------------------------------------- |
-| `C-c a a` | Start a Claude Code agent shell at project root   |
+| `M-n`     | Jump to the project's shell (create if none)      |
+| `C-c a a` | Start a NEW Claude Code agent shell at project root |
 | `C-c a d` | Start one in a directory chosen explicitly        |
 
-Only those two are global; everything below is either an in-buffer key
-or `M-x`.
+`M-n` is the everyday key: one chord to reach the agent, reusing the
+project's existing shell; a region or dired selection at point is
+carried into the prompt. `C-c a a` always creates another shell.
+Inside a shell `M-n` stays comint history (see below) — come back with
+`M-o` like any other window. In markdown buffers the mode's own `M-n`
+(next link) wins.
+
+Only those three are global; everything else below is either an
+in-buffer key or `M-x`.
 
 **Talking to the agent.** The shell is a comint buffer — the prompt is
 the last line, history is `M-p`/`M-n`.

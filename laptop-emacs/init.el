@@ -15,7 +15,7 @@
 ;;   C-c p p / b / c   in .md: live preview / browser / close (flow-markdown)
 ;;   C-c d …           deadlines, when ~/flow/deadlines is cloned
 ;;   C-c g …           LLM chat via the Claude Code CLI (flow-gptel)
-;;   C-c a …           agentic coding: agent-shell + Claude Code (flow-agent-shell)
+;;   C-c a …, M-n      agentic coding: agent-shell + Claude Code (flow-agent-shell)
 
 ;;; Code:
 

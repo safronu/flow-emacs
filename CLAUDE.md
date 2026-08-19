@@ -499,7 +499,17 @@ code alone.
 - `core/flow-agent-shell.el` (module, C-c a prefix; `C-c a a` starts a
   Claude Code agent shell at the current project root, `C-c a d` at an
   explicitly chosen directory — project detection climbs to the git
-  root, so `d` is how a repo SUBFOLDER is scoped).  The session's cwd
+  root, so `d` is how a repo SUBFOLDER is scoped).  **M-n (global) is
+  the one-chord dwim** (2026-08-18): jump to the project's shell,
+  create if none, toggle back when already inside one.  M-n is M-p's
+  (flow-latex-doc-mode) companion — the 2026-08-17 enumeration found
+  them the only free modifier-letter chords, and vanilla Emacs leaves
+  M-n unbound globally.  M-s was requested and rejected: it is the
+  search prefix everywhere (M-s o occur, M-s . symbol isearch, the
+  highlight family).  Deliberate shadows, do not "fix": markdown
+  buffers keep markdown-next-link, and comint-derived buffers (the
+  agent shell itself) keep comint-next-input so M-p/M-n history
+  walking survives — leave a shell with M-o.  The session's cwd
   decides which CLAUDE.md, `.claude/` skills and settings the agent
   loads — `C-c a d` is the Emacs equivalent of cd-then-`claude` in a
   terminal.  Its implementation is TWO-PART by necessity (2026-08-18):
