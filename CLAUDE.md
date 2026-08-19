@@ -499,7 +499,21 @@ code alone.
 - `core/flow-agent-shell.el` (module, C-c a prefix; `C-c a a` starts a
   Claude Code agent shell at the current project root, `C-c a d` at an
   explicitly chosen directory — project detection climbs to the git
-  root, so `d` is how a repo SUBFOLDER is scoped).  agent-shell +
+  root, so `d` is how a repo SUBFOLDER is scoped).  The session's cwd
+  decides which CLAUDE.md, `.claude/` skills and settings the agent
+  loads — `C-c a d` is the Emacs equivalent of cd-then-`claude` in a
+  terminal.  Its implementation is TWO-PART by necessity (2026-08-18):
+  a dynamic `let' of `agent-shell-cwd-function' covers only the buffer
+  name and `default-directory'; the ACP session/new request that
+  actually carries the cwd is sent from the initialize-response
+  callback AFTER the `let' exits, where project detection climbed back
+  to the git root (verified on-device: buffer in core/, CLI spawned at
+  the repo root).  So the command also pins the directory
+  buffer-locally (`flow-agent-shell--directory') and the module
+  installs a GLOBAL `agent-shell-cwd-function' that answers with the
+  pin in pinned buffers and nil elsewhere (nil falls through to normal
+  project detection, keeping `C-c a a' unchanged).  Don't "simplify"
+  either half away.  agent-shell +
   acp.el + shell-maker, all MELPA.  The agentic complement to flow-gptel's chat: the agent edits
   files and runs commands, with per-action permission prompts and diff
   review in Emacs.  Loaded by `laptop-emacs/` and (since 2026-08-18)

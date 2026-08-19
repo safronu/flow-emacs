@@ -48,19 +48,43 @@
 ;; before agent-shell has loaded, so the `let' below binds dynamically.
 (defvar agent-shell-cwd-function)
 
+(defvar-local flow-agent-shell--directory nil
+  "Directory this agent shell is pinned to, or nil for project detection.
+Buffer-local in the shell buffer; read by the global
+`agent-shell-cwd-function' installed in this module's `:config'.")
+
 (defun flow-agent-shell-in-directory (dir)
   "Start a Claude Code agent shell rooted at DIR.
 Bypasses `agent-shell-cwd''s project detection, which always climbs to
 the git root — this is the way to scope the agent to a subfolder of a
-repo, or to any directory regardless of what buffer is current."
+repo, or to any directory regardless of what buffer is current.  The
+session's cwd decides which CLAUDE.md, .claude/ skills and settings
+the agent loads, exactly like running `claude' from that directory in
+a terminal.
+
+A dynamic `let' of `agent-shell-cwd-function' alone is NOT enough:
+only the buffer name and the buffer's `default-directory' are
+computed inside this call.  The ACP session/new request that actually
+carries the cwd is sent from the initialize-response callback, after
+the `let' has exited — at which point project detection climbed back
+to the git root (verified on-device 2026-08-18: buffer in core/, CLI
+spawned at the repo root).  So DIR is also pinned buffer-locally in
+the new shell buffer, where the module's global
+`agent-shell-cwd-function' picks it up at callback time."
   (interactive "DAgent shell in: ")
   ;; Load now, not via the autoload inside the `let': the defcustom must
   ;; exist before the `let' is evaluated for the binding to be dynamic.
   (require 'agent-shell)
   (let* ((dir (expand-file-name dir))
          (default-directory dir)
+         (existing (buffer-list))
          (agent-shell-cwd-function (lambda () dir)))
-    (agent-shell-anthropic-start-claude-code)))
+    (agent-shell-anthropic-start-claude-code)
+    (dolist (buffer (buffer-list))
+      (unless (memq buffer existing)
+        (with-current-buffer buffer
+          (when (derived-mode-p 'agent-shell-mode)
+            (setq-local flow-agent-shell--directory dir)))))))
 
 (use-package agent-shell
   ;; :defer keeps startup free: nothing loads until the key is hit.
@@ -99,6 +123,13 @@ repo, or to any directory regardless of what buffer is current."
   ;; accepted by every version.
   (setq agent-shell-preferred-agent-config
         (agent-shell-anthropic-make-claude-code-config))
+  ;; The async half of `flow-agent-shell-in-directory' (see its
+  ;; docstring): a pinned shell buffer answers with its pin, every
+  ;; other buffer answers nil, which makes `agent-shell-cwd' fall
+  ;; through to its normal project detection — so `C-c a a' behavior
+  ;; is unchanged.
+  (setq agent-shell-cwd-function
+        (lambda () flow-agent-shell--directory))
   (when flow-claude-acp-command
     (setq agent-shell-anthropic-claude-acp-command flow-claude-acp-command)))
 
