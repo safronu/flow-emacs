@@ -100,6 +100,50 @@ the new shell buffer, where the module's global
           (when (derived-mode-p 'agent-shell-mode)
             (setq-local flow-agent-shell--directory dir)))))))
 
+(declare-function agent-shell--completion-bounds "agent-shell-completion")
+(declare-function agent-shell-completion--source-buffer "agent-shell-completion")
+
+(defun flow-agent-shell--file-exit-function (string _status)
+  "Insert a space after completed STRING unless it is a directory.
+Upstream's exit function adds the space unconditionally; a directory
+must stay open-ended so the path can keep being drilled down."
+  (unless (string-suffix-p "/" string)
+    (insert " ")))
+
+(defun flow-agent-shell--project-files-or-filesystem (orig-fn)
+  "Around-advice on `agent-shell--file-completion-at-point': ORIG-FN,
+falling back to plain filesystem completion when it has no candidates.
+
+Upstream @ completion offers ONLY the project file list (projectile or
+project.el).  A shell rooted outside any project — e.g. `M-n' from a
+non-project buffer lands the shell in HOME — gets an EMPTY list, so
+typing @ triggers completion and silently shows nothing (diagnosed on
+the live tablet 2026-08-19).  Here: same @-bounds as upstream, but the
+collection is `completion-file-name-table' resolved against the
+shell's `default-directory', so paths complete component by component
+(directories end in a slash and take no trailing space).  Inert inside
+a project: whenever ORIG-FN has candidates they are returned untouched."
+  (let ((result (funcall orig-fn)))
+    (if (nth 2 result)
+        result
+      (when-let* ((bounds (agent-shell--completion-bounds "[:alnum:]/_.-" ?@)))
+        ;; Resolve against the SHELL's cwd even from the minibuffer
+        ;; (agent-shell-send-* prompts), whose own default-directory is
+        ;; whatever buffer the command was invoked from.
+        (let ((dir (buffer-local-value
+                    'default-directory
+                    (or (and (fboundp 'agent-shell-completion--source-buffer)
+                             (agent-shell-completion--source-buffer))
+                        (current-buffer)))))
+          (list (alist-get :start bounds) (alist-get :end bounds)
+                (lambda (string pred action)
+                  (let ((default-directory dir))
+                    (completion-file-name-table string pred action)))
+                :exclusive 'no
+                :company-kind (lambda (f)
+                                (if (string-suffix-p "/" f) 'folder 'file))
+                :exit-function #'flow-agent-shell--file-exit-function))))))
+
 (use-package agent-shell
   ;; :defer keeps startup free: nothing loads until the key is hit.
   :defer t
@@ -124,6 +168,20 @@ the new shell buffer, where the module's global
   ;; stays glued to the top of the buffer.  `text' is the one-line
   ;; version with the same name/status content.
   (setq agent-shell-header-style 'text)
+  ;; @file / directory references and /command completion in the prompt:
+  ;; agent-shell auto-enables `agent-shell-completion-mode' in each new
+  ;; shell when this is non-nil.  It is upstream's default (verified in
+  ;; 20260817.1240 on the tablet), pinned here explicitly so completion
+  ;; stays on in every profile even if the upstream default ever flips.
+  ;; On an agent-shell old enough to lack agent-shell-completion.el the
+  ;; setq is inert (nothing reads it) — upgrade the package there.
+  (setq agent-shell-file-completion-enabled t)
+  ;; Filesystem fallback for @ outside projects — see the advice's
+  ;; docstring.  fboundp-guarded: an agent-shell old enough to lack the
+  ;; completion module has nothing to advise (upgrade the package there).
+  (when (fboundp 'agent-shell--file-completion-at-point)
+    (advice-add 'agent-shell--file-completion-at-point
+                :around #'flow-agent-shell--project-files-or-filesystem))
   ;; Subscription login, not ANTHROPIC_API_KEY.
   (setq agent-shell-anthropic-authentication
         (agent-shell-anthropic-make-authentication :login t))
