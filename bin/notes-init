@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # notes-init — create a Stacks-style math-notes project from the standalone
-# notes-template repo (~/flow/notes-template).
+# flow-notes repo (~/flow/flow-notes).
 #
 #   notes-init              → creates ~/math-notes
 #   notes-init ~/algebra    → creates ~/algebra
@@ -10,7 +10,7 @@
 # exception to the repo's everything-is-a-symlink convention.)
 set -euo pipefail
 
-TEMPLATE="${HOME}/flow/notes-template"
+TEMPLATE="${HOME}/flow/flow-notes"
 TARGET="${1:-${HOME}/math-notes}"
 
 if [ -e "${TARGET}" ]; then

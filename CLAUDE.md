@@ -631,7 +631,7 @@ code alone.
   are **symlinks** into the repo. Edit files in the repo, not through
   the symlinks.
 - The LaTeX notes template lives in its own repo at
-  `~/flow/notes-template` (extracted from this repo 2026-08-19).
+  `~/flow/flow-notes` (extracted from this repo 2026-08-19).
   `bin/notes-init` COPIES it to create a user notes project (default
   `~/math-notes`) — notes are content, not config, and are not
   symlinked back into this repo.
