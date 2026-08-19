@@ -107,6 +107,55 @@
 ;; supplied by `flow-claude-config-dir' above.
 (flow-load "flow-agent-shell"); C-c a …: agentic coding, Claude Code over ACP
 
+;; agent-shell display fixes for this device (2026-08-19), both header-
+;; line artifacts diagnosed from the installed package sources:
+;;
+;; 1. Tofu separators.  agent-shell's text header and mode line join
+;;    their segments with a hardcoded ➤ (U+27A4).  The ONLY font on the
+;;    whole device containing that char is Boox's subsetted
+;;    NotoSansSymbols (verified over every ~/fonts + /system/fonts cmap),
+;;    and the sfnt-android backend doesn't use it — so each separator
+;;    rendered as a glyphless box.  Display-table remap to ▸ (U+25B8,
+;;    present in JetBrains Mono): display tables apply to header and
+;;    mode lines too, and a plain-char entry keeps the underlying face.
+;;    Global (standard-display-table) on purpose — U+27A4 is tofu in ANY
+;;    buffer on this device, agent output included.
+;;
+;; 2. Black bar.  While the agent works, the header's busy indicator
+;;    animates 4-cell ░-block frames on a heartbeat tick.  On the
+;;    16-gray panel the ░░░░ strip reads as a solid dark bar, and every
+;;    tick partially refreshes the header line, which smears/ghosts it.
+;;    Off entirely: an animation has no place on e-ink, and busy state
+;;    is visible in the transcript itself.  (Laptop keeps both defaults
+;;    — this block is profile-side for that reason.)
+(unless standard-display-table
+  (setq standard-display-table (make-display-table)))
+(aset standard-display-table #x27A4 (vector ?▸))
+(with-eval-after-load 'agent-shell
+  (setq agent-shell-show-busy-indicator nil))
+
+;;; --- Emacs server, reachable from Termux ----------------------------------
+;;
+;; The socket deliberately lives in TERMUX's home, not this app's: the
+;; two apps share a UID (see CLAUDE.md), so a Claude Code session (or
+;; any Termux shell) can eval in the running native Emacs with
+;;
+;;   emacsclient -s /data/data/com.termux/files/home/.emacs-server-native/server -e '<form>'
+;;
+;; This is primarily a diagnostic channel — it's what made the
+;; 2026-08-19 black-bar hunt convergent: dumping the live
+;; header-line-format and realized face attributes beat theorizing over
+;; specs (custom-set-faces merges per ATTRIBUTE with an enabled theme,
+;; so the rendered face is not readable off any one spec).  Same-UID
+;; sockets only; nothing is exposed beyond the two apps.  The guard
+;; keeps a second `load' of init (or a stale socket left by a killed
+;; process, which `server-running-p' reports dead) from erroring.
+
+(require 'server)
+(setq server-socket-dir "/data/data/com.termux/files/home/.emacs-server-native")
+(unless (server-running-p)
+  (server-start))
+
 ;;; --- Buffer font follows the document font --------------------------------
 ;;
 ;; Remaps a LaTeX buffer's default :family to a TTF matching the

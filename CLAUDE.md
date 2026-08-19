@@ -44,6 +44,17 @@ code alone.
   'termux|emacs'` — the UIDs must match.
 
 [port]: https://sourceforge.net/projects/android-ports-for-gnu-emacs/
+- **The running native Emacs is reachable for live eval from Termux**
+  (so from a Claude Code session):
+  `emacsclient -s /data/data/com.termux/files/home/.emacs-server-native/server -e '<form>'`.
+  The android profile starts the server with its socket in Termux's home
+  on purpose (shared UID; see the server section in
+  `android-emacs/init.el`).  Prefer this over theorizing when debugging
+  anything display- or state-dependent — dump the live value
+  (`header-line-format`, `face-attribute` with INHERIT=t, buffer text
+  properties) instead of predicting it from specs.  Watch bash quoting:
+  elisp `#'` and `'` inside a single-quoted shell arg break it — write
+  the form to a file and `-e '(load "...")'` for anything nontrivial.
 - **Termux Emacs has no image support** (verify with
   `M-x describe-variable RET image-types RET`). Only the native Emacs port
   can render inline images.

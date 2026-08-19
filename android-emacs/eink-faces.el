@@ -47,7 +47,14 @@
  '(font-lock-comment-delimiter-face ((t (:foreground "#aaaaaa" :slant italic))))
  '(font-lock-warning-face       ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
  '(font-lock-preprocessor-face  ((t (:foreground "#000000" :weight semi-bold :underline t))))
- '(font-lock-negation-char-face ((t (:foreground "#000000" :weight bold))))
+ ;; :inherit nil is load-bearing: custom-set-faces merges with an enabled
+ ;; theme PER ATTRIBUTE, and modus-operandi specs this face as
+ ;; `:inherit error' — which this file styles as inverse video.  Without
+ ;; the reset the inherited :background "#000000" combines with our
+ ;; black :foreground into unreadable black-on-black (surfaced 2026-08-19
+ ;; as a "solid black bar" in agent-shell's header: its model segment,
+ ;; agent-shell-model, inherits this face).
+ '(font-lock-negation-char-face ((t (:inherit nil :foreground "#000000" :weight bold))))
 
  ;; --- Search & matching: inverse = "here", box = "also here" -------
  '(isearch        ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
@@ -110,9 +117,13 @@
  '(flyspell-duplicate ((t (:underline (:style wave :color "#777777")))))
 
  ;; --- Diffs: + underline / - strike-through ------------------------
- '(diff-added             ((t (:foreground "#000000" :underline t :weight bold))))
- '(diff-removed           ((t (:foreground "#444444" :strike-through t))))
- '(diff-changed           ((t (:foreground "#000000" :slant italic :weight medium))))
+ ;; :background unspecified on the three base faces for the same
+ ;; per-attribute-merge reason as font-lock-negation-char-face above:
+ ;; without it modus-operandi's pastel diff backgrounds (#c1f2d1 /
+ ;; #ffd8d5 / #ffdfa9) leak through and dither on the panel.
+ '(diff-added             ((t (:background unspecified :foreground "#000000" :underline t :weight bold))))
+ '(diff-removed           ((t (:background unspecified :foreground "#444444" :strike-through t))))
+ '(diff-changed           ((t (:background unspecified :foreground "#000000" :slant italic :weight medium))))
  '(diff-refine-added      ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
  '(diff-refine-removed    ((t (:foreground "#ffffff" :background "#444444" :strike-through t))))
  '(diff-header            ((t (:foreground "#000000" :background "#dddddd" :weight bold))))
@@ -141,7 +152,9 @@
  '(dired-directory ((t (:foreground "#000000" :weight bold))))
  '(dired-symlink   ((t (:foreground "#000000" :slant italic :underline t))))
  '(dired-marked    ((t (:foreground "#ffffff" :background "#000000" :weight bold))))
- '(dired-flagged   ((t (:foreground "#000000" :strike-through t :weight bold))))
+ ;; :inherit nil: modus specs `:inherit modus-themes-mark-del', whose
+ ;; salmon background would otherwise leak under the strike-through.
+ '(dired-flagged   ((t (:inherit nil :foreground "#000000" :strike-through t :weight bold))))
  '(dired-header    ((t (:foreground "#000000" :weight ultra-bold :underline t))))
  '(completions-common-part      ((t (:foreground "#000000" :weight bold))))
  ;; No :underline here — the "first difference" is often a SPACE (e.g.
